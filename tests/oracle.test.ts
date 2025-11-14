@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import chalk from 'chalk';
 import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -7,25 +7,53 @@ import { buildPrompt, runOracle, renderPromptMarkdown } from '../src/oracle.js';
 
 chalk.level = 0;
 
-async function createTempFile(contents) {
+type TempFile = { dir: string; filePath: string };
+
+type ResponseEvent = {
+  type: string;
+  delta?: string;
+  output_index?: number;
+  content_index?: number;
+  [key: string]: unknown;
+};
+
+interface MockResponse {
+  status: string;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    reasoning_tokens: number;
+    total_tokens: number;
+  };
+  output: Array<{
+    type: 'message';
+    content: Array<{ type: 'text'; text: string }>;
+  }>;
+}
+
+async function createTempFile(contents: string): Promise<TempFile> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'oracle-test-'));
   const filePath = path.join(dir, 'sample.txt');
   await writeFile(filePath, contents, 'utf8');
   return { dir, filePath };
 }
 
-class MockStream {
-  constructor(events, finalResponse) {
+class MockStream implements AsyncIterable<ResponseEvent> {
+  private events: ResponseEvent[];
+  private finalResponseValue: MockResponse;
+  private aborted: boolean;
+
+  constructor(events: ResponseEvent[], finalResponse: MockResponse) {
     this.events = events;
     this.finalResponseValue = finalResponse;
     this.aborted = false;
   }
 
-  abort() {
+  abort(): void {
     this.aborted = true;
   }
 
-  [Symbol.asyncIterator]() {
+  [Symbol.asyncIterator](): AsyncIterator<ResponseEvent> {
     let index = 0;
     const events = this.events;
     return {
@@ -42,17 +70,23 @@ class MockStream {
     };
   }
 
-  async finalResponse() {
+  async finalResponse(): Promise<MockResponse> {
     return this.finalResponseValue;
   }
 }
 
 class MockClient {
-  constructor(stream) {
+  public stream: MockStream;
+  public lastRequest: Record<string, unknown> | null;
+  public responses: {
+    stream: (body: Record<string, unknown>) => Promise<MockStream>;
+  };
+
+  constructor(stream: MockStream) {
     this.stream = stream;
     this.lastRequest = null;
     this.responses = {
-      stream: async (body) => {
+      stream: async (body: Record<string, unknown>) => {
         this.lastRequest = body;
         return this.stream;
       },
@@ -75,7 +109,7 @@ describe('buildPrompt', () => {
 
 describe('runOracle preview mode', () => {
   test('prints request JSON when preview-json is enabled', async () => {
-    const logs = [];
+    const logs: string[] = [];
     const result = await runOracle(
       {
         prompt: 'Preview me',
@@ -86,18 +120,18 @@ describe('runOracle preview mode', () => {
       },
       {
         apiKey: 'sk-test',
-        log: (msg) => logs.push(msg),
+        log: (msg: string) => logs.push(msg),
       },
     );
 
     expect(result.mode).toBe('preview');
-    expect(result.requestBody.tools).toEqual([{ type: 'web_search_preview' }]);
+    expect(result.requestBody?.tools).toEqual([{ type: 'web_search_preview' }]);
     expect(logs[0]).toBe('Request JSON');
     expect(logs.some((line) => line.startsWith('Oracle ('))).toBe(false);
   });
 
   test('omits request JSON in preview-only mode', async () => {
-    const logs = [];
+    const logs: string[] = [];
     await runOracle(
       {
         prompt: 'Preview only',
@@ -106,7 +140,7 @@ describe('runOracle preview mode', () => {
       },
       {
         apiKey: 'sk-test',
-        log: (msg) => logs.push(msg),
+        log: (msg: string) => logs.push(msg),
       },
     );
 
@@ -139,8 +173,8 @@ describe('runOracle streaming output', () => {
       ],
       buildResponse(),
     );
-    const writes = [];
-    const logs = [];
+    const writes: string[] = [];
+    const logs: string[] = [];
     let ticks = 0;
     const client = new MockClient(stream);
     const result = await runOracle(
@@ -151,11 +185,11 @@ describe('runOracle streaming output', () => {
       {
         apiKey: 'sk-test',
         client,
-        write: (chunk) => {
+        write: (chunk: string) => {
           writes.push(chunk);
           return true;
         },
-        log: (msg) => logs.push(msg),
+        log: (msg: string) => logs.push(msg),
         now: () => {
           ticks += 1000;
           return ticks;
@@ -175,8 +209,8 @@ describe('runOracle streaming output', () => {
       buildResponse(),
     );
     const client = new MockClient(stream);
-    const writes = [];
-    const logs = [];
+    const writes: string[] = [];
+    const logs: string[] = [];
     await runOracle(
       {
         prompt: 'Say nothing',
@@ -186,11 +220,11 @@ describe('runOracle streaming output', () => {
       {
         apiKey: 'sk-test',
         client,
-        write: (chunk) => {
+        write: (chunk: string) => {
           writes.push(chunk);
           return true;
         },
-        log: (msg) => logs.push(msg),
+        log: (msg: string) => logs.push(msg),
       },
     );
 
@@ -211,7 +245,7 @@ describe('runOracle file reports', () => {
     const fsMock = createMockFs(files);
     const stream = new MockStream([], buildResponse());
     const client = new MockClient(stream);
-    const logs = [];
+    const logs: string[] = [];
     await runOracle(
       {
         prompt: 'Base prompt',
@@ -225,7 +259,7 @@ describe('runOracle file reports', () => {
         cwd,
         fs: fsMock,
         client,
-        log: (msg) => logs.push(msg),
+        log: (msg: string) => logs.push(msg),
       },
     );
     expect(logs[0].startsWith('Oracle (')).toBe(true);
@@ -242,7 +276,7 @@ describe('runOracle file reports', () => {
       [path.resolve(cwd, 'big.txt')]: 'a'.repeat(10000),
     };
     const fsMock = createMockFs(files);
-    const logs = [];
+    const logs: string[] = [];
     await expect(
       runOracle(
         {
@@ -255,7 +289,7 @@ describe('runOracle file reports', () => {
           apiKey: 'sk-test',
           cwd,
           fs: fsMock,
-          log: (msg) => logs.push(msg),
+          log: (msg: string) => logs.push(msg),
           clientFactory: () => {
             throw new Error('Should not create client when over budget');
           },
@@ -275,7 +309,7 @@ describe('runOracle file reports', () => {
 
     const stream = new MockStream([], buildResponse());
     const client = new MockClient(stream);
-    const logs = [];
+    const logs: string[] = [];
     await runOracle(
       {
         prompt: 'Directory test',
@@ -287,7 +321,7 @@ describe('runOracle file reports', () => {
       {
         apiKey: 'sk-test',
         client,
-        log: (msg) => logs.push(msg),
+        log: (msg: string) => logs.push(msg),
       },
     );
 
@@ -334,53 +368,53 @@ describe('runOracle request payload', () => {
         log: () => {},
       },
     );
-    expect(client.lastRequest.tools).toEqual([{ type: 'web_search_preview' }]);
+    expect(client.lastRequest?.tools).toEqual([{ type: 'web_search_preview' }]);
   });
 });
 
-function createMockFs(fileEntries) {
+function createMockFs(fileEntries: Record<string, string>) {
   const normalizedEntries = Object.fromEntries(
     Object.entries(fileEntries).map(([key, value]) => [path.resolve(key), value]),
-  );
+  ) as Record<string, string>;
 
-  function hasDirectory(dirPath) {
+  function hasDirectory(dirPath: string) {
     const prefix = `${dirPath}${path.sep}`;
     return Object.keys(normalizedEntries).some((entry) => entry.startsWith(prefix));
   }
 
   return {
-    async stat(targetPath) {
+    async stat(targetPath: string) {
       const normalizedPath = path.resolve(targetPath);
       if (normalizedEntries[normalizedPath] != null) {
         return {
-          isFile() {
+          isFile(): boolean {
             return true;
           },
-          isDirectory() {
+          isDirectory(): boolean {
             return false;
           },
         };
       }
       if (hasDirectory(normalizedPath)) {
         return {
-          isFile() {
+          isFile(): boolean {
             return false;
           },
-          isDirectory() {
+          isDirectory(): boolean {
             return true;
           },
         };
       }
       throw Object.assign(new Error(`Missing file: ${normalizedPath}`), { code: 'ENOENT' });
     },
-    async readFile(targetPath) {
+    async readFile(targetPath: string) {
       const normalizedPath = path.resolve(targetPath);
       if (!(normalizedPath in normalizedEntries)) {
         throw Object.assign(new Error(`Missing file: ${normalizedPath}`), { code: 'ENOENT' });
       }
       return normalizedEntries[normalizedPath];
     },
-    async readdir(targetPath) {
+    async readdir(targetPath: string) {
       const normalizedPath = path.resolve(targetPath);
       if (!hasDirectory(normalizedPath)) {
         throw Object.assign(new Error(`Not a directory: ${normalizedPath}`), { code: 'ENOTDIR' });
@@ -402,7 +436,7 @@ function createMockFs(fileEntries) {
   };
 }
 
-function buildResponse() {
+function buildResponse(): MockResponse {
   return {
     status: 'completed',
     usage: {

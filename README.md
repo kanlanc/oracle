@@ -4,7 +4,8 @@ Oracle is a command-line helper for GPT-5 Pro / GPT-5.1 when you have one really
 
 ## Prerequisites
 
-- [Bun](https://bun.sh) 1.3+
+- Node.js 20+
+- [pnpm](https://pnpm.io/) 8+
 - An OpenAI API key with access to GPT-5 Pro or GPT-5.1 (`OPENAI_API_KEY`)
 
 Copy `.env.example` to `.env` (or export the variable another way) and drop your key in:
@@ -16,12 +17,15 @@ cp .env.example .env
 ## Install & run
 
 ```bash
-bun install
-bun ./bin/oracle.js --prompt "Summarize the risk register" \
+pnpm install
+pnpm start -- --prompt "Summarize the risk register" \
+  --file docs/risk-register.md docs/risk-matrix.md
+# or
+node ./bin/oracle.js --prompt "Summarize the risk register" \
   --file docs/risk-register.md docs/risk-matrix.md
 ```
 
-Use `bun run start` if you prefer invoking the script through the package.json shortcut. Always attach the files (or directories) that describe the bug or decision you want GPT-5 to reason about—just verify the combined token count with `--files-report` before sending the request.
+Use `pnpm oracle` if you prefer the alias. Always attach the files (or directories) that describe the bug or decision you want GPT-5 to reason about—just verify the combined token count with `--files-report` before sending the request.
 
 ## Features
 
@@ -63,7 +67,7 @@ Every run ends with a stats block showing elapsed time, actual/estimated tokens,
 - Directory paths expand recursively; consider pairing with `--files-report` to understand token impact before sending extremely large trees.
 - Attachments are treated as plain UTF-8; binary files will throw. Keep extremely large files out of the prompt to avoid blowing the token budget.
 - Each invocation is stored as a session under `~/.oracle/sessions`; script multi-turn flows by feeding prior session outputs back through `--file`.
-- `bun run lint` invokes a lightweight Bun build to ensure the shipped JS stays syntax-valid.
+- `pnpm lint` runs type-checking plus Biome so the shipped JS stays syntax-valid.
 
 ## Sessions & Background Execution
 
@@ -76,7 +80,7 @@ Commands:
 
 Typical workflow:
 
-1. Kick off a run: `bun run start -- -m gpt-5.1 -p "Fix the bug" --file src/app.ts`. The CLI immediately returns with the Session ID and the background worker carries on.
+1. Kick off a run: `pnpm start -- --prompt "Fix the bug" --file src/app.ts`. The CLI immediately returns with the Session ID and the background worker carries on.
 2. Tail it later: `oracle session <sessionId>` replays the transcript from disk and follows new output until the run finishes.
 3. Check recent work: `oracle status --hours 72 --limit 50` lists the last 72 hours of sessions (cap 50 entries). Add `--all` to include every stored session. If you accumulate more than 1,000, delete old folders inside `~/.oracle/sessions`.
 4. Need a different storage path? Set `ORACLE_HOME_DIR=/custom/cache` before running the CLI.
@@ -84,7 +88,7 @@ Typical workflow:
 ## Testing
 
 ```bash
-bun test
+pnpm test
 ```
 
-The Bun test suite covers prompt building with attachments, preview mode, token budget enforcement, and the stats/cost output without touching the OpenAI API.
+The Vitest suite covers prompt building with attachments, preview mode, token budget enforcement, and the stats/cost output without touching the OpenAI API. Run `pnpm test:coverage` for V8 coverage reports.

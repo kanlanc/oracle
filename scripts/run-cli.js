@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import { spawn } from 'node:child_process';
 
 const args = process.argv.slice(2);
