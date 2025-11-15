@@ -667,18 +667,25 @@ function buildResponseObserverExpression(timeoutMs: number): string {
     const captureViaObserver = () =>
       new Promise((resolve, reject) => {
         const deadline = Date.now() + ${timeoutMs};
+        let stopInterval: ReturnType<typeof setInterval> | null = null;
         const observer = new MutationObserver(() => {
           const extracted = extractFromTurns();
           if (extracted) {
             observer.disconnect();
+            if (stopInterval) {
+              clearInterval(stopInterval);
+            }
             resolve(extracted);
           } else if (Date.now() > deadline) {
             observer.disconnect();
+            if (stopInterval) {
+              clearInterval(stopInterval);
+            }
             reject(new Error('Response timeout'));
           }
         });
-        observer.observe(document.body, { childList: true, subtree: true });
-        const stopInterval = setInterval(() => {
+        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+        stopInterval = setInterval(() => {
           const stop = document.querySelector('${STOP_BUTTON_SELECTOR}');
           if (!stop) {
             return;
@@ -690,7 +697,9 @@ function buildResponseObserverExpression(timeoutMs: number): string {
           stop.click();
         }, 500);
         setTimeout(() => {
-          clearInterval(stopInterval);
+          if (stopInterval) {
+            clearInterval(stopInterval);
+          }
           observer.disconnect();
           reject(new Error('Response timeout'));
         }, ${timeoutMs});

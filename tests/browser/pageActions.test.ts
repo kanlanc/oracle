@@ -55,6 +55,21 @@ describe('waitForAssistantResponse', () => {
     expect(result.text).toBe('Answer');
     expect(result.meta).toEqual({ messageId: 'mid', turnId: 'tid' });
   });
+
+  test('response observer watches character data mutations', async () => {
+    let capturedExpression = '';
+    const runtime = {
+      evaluate: vi.fn().mockImplementation((params) => {
+        if (params?.awaitPromise) {
+          capturedExpression = String(params?.expression ?? '');
+          throw new Error('stop');
+        }
+        return { result: { value: null } };
+      }),
+    } as unknown as ChromeClient['Runtime'];
+    await expect(waitForAssistantResponse(runtime, 100, logger)).rejects.toThrow('stop');
+    expect(capturedExpression).toContain('characterData: true');
+  });
 });
 
 describe('uploadAttachmentFile', () => {
