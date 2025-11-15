@@ -1,3 +1,6 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import type { RunOracleOptions } from '../oracle.js';
 import { readFiles, createFileSections, DEFAULT_SYSTEM_PROMPT, MODEL_CONFIGS, TOKENIZER_OPTIONS } from '../oracle.js';
 import type { BrowserAttachment } from './types.js';
@@ -59,6 +62,26 @@ export async function assembleBrowserPrompt(
         displayPath: section.displayPath,
         sizeBytes: Buffer.byteLength(section.content, 'utf8'),
       }));
+
+  const MAX_BROWSER_ATTACHMENTS = 10;
+  if (!inlineFiles && attachments.length > MAX_BROWSER_ATTACHMENTS) {
+    const bundleDir = await fs.mkdtemp(path.join(os.tmpdir(), 'oracle-browser-bundle-'));
+    const bundlePath = path.join(bundleDir, 'attachments-bundle.txt');
+    const bundleLines: string[] = [];
+    sections.forEach((section) => {
+      bundleLines.push(`### File: ${section.displayPath}`);
+      bundleLines.push(section.content.trimEnd());
+      bundleLines.push('');
+    });
+    const bundleText = `${bundleLines.join('\n').trimEnd()}\n`;
+    await fs.writeFile(bundlePath, bundleText, 'utf8');
+    attachments.length = 0;
+    attachments.push({
+      path: bundlePath,
+      displayPath: 'attachments-bundle.txt',
+      sizeBytes: Buffer.byteLength(bundleText, 'utf8'),
+    });
+  }
   const inlineFileCount = inlineFiles ? sections.length : 0;
   const tokenizer = MODEL_CONFIGS[runOptions.model].tokenizer;
   const tokenizerUserContent =

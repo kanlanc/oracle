@@ -81,4 +81,21 @@ describe('assembleBrowserPrompt', () => {
     expect(inline.estimatedInputTokens).toBeGreaterThanOrEqual(base.estimatedInputTokens);
     expect(inline.tokenEstimateIncludesInlineFiles).toBe(true);
   });
+
+  test('bundles attachments when more than 10 files', async () => {
+    const fileNames = Array.from({ length: 11 }, (_, i) => `file${i + 1}.txt`);
+    const options = buildOptions({ file: fileNames });
+    const result = await assembleBrowserPrompt(options, {
+      cwd: '/repo',
+      readFilesImpl: async (paths) =>
+        paths.map((entry) => ({
+          path: path.resolve('/repo', entry),
+          content: `content for ${entry}`,
+        })),
+    });
+
+    expect(result.attachments).toHaveLength(1);
+    expect(result.attachments[0]?.displayPath).toBe('attachments-bundle.txt');
+    expect(result.inlineFileCount).toBe(0);
+  });
 });
