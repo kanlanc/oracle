@@ -37,7 +37,6 @@ npx @steipete/oracle -p "Review the TS data layer" --file "src/**/*.ts" --file "
 
 - **One-liner in CI** — `OPENAI_API_KEY=sk-... npx @steipete/oracle --prompt "Smoke-check latest PR" --file src/ docs/ --preview summary` (add to your pipeline as a non-blocking report step).
 - **Package script** — In `package.json`: `"oracle": "oracle --prompt \"Review the diff\" --file ."` then run `OPENAI_API_KEY=... pnpm oracle`.
-- **Browser mode for Pro** — When teammates don’t have API keys, `npx @steipete/oracle --engine browser --prompt "Summarize this repo" --file .` uses the shared ChatGPT Pro login in Chrome.
 
 ## Highlights
 
