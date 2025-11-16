@@ -1,6 +1,6 @@
 import type { Command, OptionValues } from 'commander';
 import { usesDefaultStatusFilters } from './options.js';
-import { attachSession, showStatus, type ShowStatusOptions } from './sessionDisplay.js';
+import { attachSession, showStatus, type AttachSessionOptions, type ShowStatusOptions } from './sessionDisplay.js';
 import { deleteSessionsOlderThan } from '../sessionManager.js';
 
 export interface StatusOptions extends OptionValues {
@@ -9,11 +9,13 @@ export interface StatusOptions extends OptionValues {
   all: boolean;
   clear?: boolean;
   clean?: boolean;
+  render?: boolean;
+  renderMarkdown?: boolean;
 }
 
 interface SessionCommandDependencies {
   showStatus: (options: ShowStatusOptions) => Promise<void> | void;
-  attachSession: (sessionId: string) => Promise<void>;
+  attachSession: (sessionId: string, options?: AttachSessionOptions) => Promise<void>;
   usesDefaultStatusFilters: (cmd: Command) => boolean;
   deleteSessionsOlderThan: typeof deleteSessionsOlderThan;
 }
@@ -25,7 +27,7 @@ const defaultDependencies: SessionCommandDependencies = {
   deleteSessionsOlderThan,
 };
 
-const SESSION_OPTION_KEYS = new Set(['hours', 'limit', 'all', 'clear', 'clean']);
+const SESSION_OPTION_KEYS = new Set(['hours', 'limit', 'all', 'clear', 'clean', 'render', 'renderMarkdown']);
 
 export async function handleSessionCommand(
   sessionId: string | undefined,
@@ -67,7 +69,8 @@ export async function handleSessionCommand(
   if (ignoredFlags.length > 0) {
     console.log(`Ignoring flags on session attach: ${ignoredFlags.join(', ')}`);
   }
-  await deps.attachSession(sessionId);
+  const renderMarkdown = Boolean(sessionOptions.render || sessionOptions.renderMarkdown);
+  await deps.attachSession(sessionId, { renderMarkdown });
 }
 
 export function formatSessionCleanupMessage(

@@ -201,6 +201,8 @@ const sessionCommand = program
   .option('--limit <count>', 'Maximum sessions to show when listing (max 1000).', parseIntOption, 100)
   .option('--all', 'Include all stored sessions regardless of age.', false)
   .option('--clear', 'Delete stored sessions older than the provided window (24h default).', false)
+  .option('--render', 'Render completed session output as markdown (rich TTY only).', false)
+  .option('--render-markdown', 'Alias for --render.', false)
   .addOption(new Option('--clean', 'Deprecated alias for --clear.').default(false).hideHelp())
   .action(async (sessionId, _options: StatusOptions, cmd: Command) => {
     await handleSessionCommand(sessionId, cmd);
@@ -213,6 +215,8 @@ const statusCommand = program
   .option('--limit <count>', 'Maximum sessions to show (max 1000).', parseIntOption, 100)
   .option('--all', 'Include all stored sessions regardless of age.', false)
   .option('--clear', 'Delete stored sessions older than the provided window (24h default).', false)
+  .option('--render', 'Render completed session output as markdown (rich TTY only).', false)
+  .option('--render-markdown', 'Alias for --render.', false)
   .addOption(new Option('--clean', 'Deprecated alias for --clear.').default(false).hideHelp())
   .action(async (sessionId: string | undefined, _options: StatusOptions, command: Command) => {
     const statusOptions = command.opts<StatusOptions>();
