@@ -51,6 +51,27 @@ describe('handleSessionCommand', () => {
     expect(attachSession).toHaveBeenCalledWith('abc');
   });
 
+  test('ignores unrelated root-only flags and logs a note when attaching by id', async () => {
+    const command = createCommandWithOptions({ hours: 24, limit: 400, all: false });
+    // Simulate passing --render-markdown at the root; the session handler should ignore it.
+    command.setOptionValueWithSource('renderMarkdown', true, 'cli');
+
+    const attachSession = vi.fn();
+    const showStatus = vi.fn();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    await handleSessionCommand('swiftui-menubarextra-on-macos-15', command, {
+      showStatus,
+      attachSession,
+      usesDefaultStatusFilters: vi.fn(),
+      deleteSessionsOlderThan: vi.fn(),
+    });
+
+    expect(attachSession).toHaveBeenCalledWith('swiftui-menubarextra-on-macos-15');
+    expect(showStatus).not.toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith('Ignoring flags on session attach: renderMarkdown');
+    expect(process.exitCode).toBeUndefined();
+  });
+
   test('forces infinite range when --all set', async () => {
     const command = createCommandWithOptions({ hours: 1, limit: 25, all: true });
     const showStatus = vi.fn();

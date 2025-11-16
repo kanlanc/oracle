@@ -25,6 +25,8 @@ const defaultDependencies: SessionCommandDependencies = {
   deleteSessionsOlderThan,
 };
 
+const SESSION_OPTION_KEYS = new Set(['hours', 'limit', 'all', 'clear', 'clean']);
+
 export async function handleSessionCommand(
   sessionId: string | undefined,
   command: Command,
@@ -60,6 +62,11 @@ export async function handleSessionCommand(
     });
     return;
   }
+  // Surface any root-level flags that were provided but are ignored when attaching to a session.
+  const ignoredFlags = listIgnoredFlags(command);
+  if (ignoredFlags.length > 0) {
+    console.log(`Ignoring flags on session attach: ${ignoredFlags.join(', ')}`);
+  }
   await deps.attachSession(sessionId);
 }
 
@@ -71,4 +78,24 @@ export function formatSessionCleanupMessage(
   const remainingLabel = `${result.remaining} ${result.remaining === 1 ? 'session' : 'sessions'} remain`;
   const hint = 'Run "oracle session --clear --all" to delete everything.';
   return `Deleted ${deletedLabel} (${scope}). ${remainingLabel}.\n${hint}`;
+}
+
+function listIgnoredFlags(command: Command): string[] {
+  const opts = command.optsWithGlobals() as Record<string, unknown>;
+  const ignored: string[] = [];
+  for (const key of Object.keys(opts)) {
+    if (SESSION_OPTION_KEYS.has(key)) {
+      continue;
+    }
+    const source = command.getOptionValueSource?.(key);
+    if (source !== 'cli' && source !== 'env') {
+      continue;
+    }
+    const value = opts[key];
+    if (value === undefined || value === false || value === null) {
+      continue;
+    }
+    ignored.push(key);
+  }
+  return ignored;
 }

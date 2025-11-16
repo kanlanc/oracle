@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Help tips call out that Oracle is one-shot and does not remember prior runs, so every query should include full context.
+- `oracle session <id>` now logs a brief notice when extra root-only flags are present (e.g., `--render-markdown`) to make it clear those options are ignored during reattach.
 
 ## 1.0.7 — 2025-11-16
 
