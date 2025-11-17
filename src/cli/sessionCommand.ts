@@ -1,7 +1,7 @@
 import type { Command, OptionValues } from 'commander';
 import { usesDefaultStatusFilters } from './options.js';
 import { attachSession, showStatus, type AttachSessionOptions, type ShowStatusOptions } from './sessionDisplay.js';
-import { deleteSessionsOlderThan } from '../sessionManager.js';
+import { deleteSessionsOlderThan, getSessionPaths } from '../sessionManager.js';
 
 export interface StatusOptions extends OptionValues {
   hours: number;
@@ -11,6 +11,7 @@ export interface StatusOptions extends OptionValues {
   clean?: boolean;
   render?: boolean;
   renderMarkdown?: boolean;
+  path?: boolean;
   verboseRender?: boolean;
 }
 
@@ -19,6 +20,7 @@ interface SessionCommandDependencies {
   attachSession: (sessionId: string, options?: AttachSessionOptions) => Promise<void>;
   usesDefaultStatusFilters: (cmd: Command) => boolean;
   deleteSessionsOlderThan: typeof deleteSessionsOlderThan;
+  getSessionPaths: typeof import('../sessionManager.js').getSessionPaths;
 }
 
 const defaultDependencies: SessionCommandDependencies = {
@@ -26,9 +28,10 @@ const defaultDependencies: SessionCommandDependencies = {
   attachSession,
   usesDefaultStatusFilters,
   deleteSessionsOlderThan,
+  getSessionPaths,
 };
 
-const SESSION_OPTION_KEYS = new Set(['hours', 'limit', 'all', 'clear', 'clean', 'render', 'renderMarkdown']);
+const SESSION_OPTION_KEYS = new Set(['hours', 'limit', 'all', 'clear', 'clean', 'render', 'renderMarkdown', 'path']);
 
 export async function handleSessionCommand(
   sessionId: string | undefined,
@@ -43,6 +46,7 @@ export async function handleSessionCommand(
   const renderMarkdownSource = command.getOptionValueSource?.('renderMarkdown');
   const renderExplicit = renderSource === 'cli' || renderMarkdownSource === 'cli';
   const autoRender = !renderExplicit && process.stdout.isTTY;
+  const pathRequested = Boolean(sessionOptions.path);
   const clearRequested = Boolean(sessionOptions.clear || sessionOptions.clean);
   if (clearRequested) {
     if (sessionId) {
@@ -60,6 +64,24 @@ export async function handleSessionCommand(
   if (sessionId === 'clear' || sessionId === 'clean') {
     console.error('Session cleanup now uses --clear. Run "oracle session --clear --hours <n>" instead.');
     process.exitCode = 1;
+    return;
+  }
+  if (pathRequested) {
+    if (!sessionId) {
+      console.error('The --path flag requires a session ID.');
+      process.exitCode = 1;
+      return;
+    }
+    try {
+      const paths = await deps.getSessionPaths(sessionId);
+      console.log(`Session dir: ${paths.dir}`);
+      console.log(`Metadata: ${paths.metadata}`);
+      console.log(`Request: ${paths.request}`);
+      console.log(`Log: ${paths.log}`);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    }
     return;
   }
   if (!sessionId) {

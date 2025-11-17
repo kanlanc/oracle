@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.0.11 — 2025-11-17
+
+### Added
+- `oracle session <id> --path` now prints the on-disk session directory plus metadata/request/log files, exiting with an error when any expected file is missing instead of attaching.
+
 ## 1.0.10 — 2025-11-17
 
 ### Added

@@ -335,3 +335,29 @@ export async function wait(ms: number): Promise<void> {
 }
 
 export { ORACLE_HOME, SESSIONS_DIR, MAX_STATUS_LIMIT };
+
+export async function getSessionPaths(sessionId: string): Promise<{
+  dir: string;
+  metadata: string;
+  log: string;
+  request: string;
+}> {
+  const dir = sessionDir(sessionId);
+  const metadata = metaPath(sessionId);
+  const log = logPath(sessionId);
+  const request = requestPath(sessionId);
+
+  const required = [metadata, log, request];
+  const missing: string[] = [];
+  for (const file of required) {
+    if (!(await fileExists(file))) {
+      missing.push(path.basename(file));
+    }
+  }
+
+  if (missing.length > 0) {
+    throw new Error(`Session "${sessionId}" is missing: ${missing.join(', ')}`);
+  }
+
+  return { dir, metadata, log, request };
+}
