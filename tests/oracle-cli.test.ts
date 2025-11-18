@@ -668,7 +668,7 @@ describe('oracle utility helpers', () => {
     }
   });
 
-  test('readFiles skips dotfiles by default when expanding directories', async () => {
+  testNonWindows('readFiles skips dotfiles by default when expanding directories', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'oracle-readfiles-dot-'));
     try {
       const dotFile = path.join(dir, '.env');
@@ -699,7 +699,7 @@ describe('oracle utility helpers', () => {
     }
   });
 
-  test('readFiles honors .gitignore when present', async () => {
+  testNonWindows('readFiles honors .gitignore when present', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'oracle-readfiles-gitignore-'));
     try {
       const gitignore = path.join(dir, '.gitignore');
