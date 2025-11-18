@@ -23,6 +23,28 @@ All notable changes to this project will be documented in this file.
 - macOS notifier helper now ships signed/notarized with the Oracle icon and auto-repairs execute bits for the fallback terminal-notifier.
 - Session summaries and cost displays are clearer, with zombie-session detection to avoid stale runs.
 
+#### MCP configuration (quick reference)
+- Local stdio (mcporter): add to `config/mcporter.json`
+  ```json
+  {
+    "name": "oracle-local",
+    "type": "stdio",
+    "command": "node",
+    "args": ["../dist/bin/oracle-mcp.js"]
+  }
+  ```
+- Claude Code (global/user scope):  
+  `claude mcp add --scope user --transport stdio oracle -- oracle-mcp`
+- Project-scoped Claude: drop `.mcp.json` next to the repo root with
+  ```json
+  {
+    "mcpServers": {
+      "oracle": { "type": "stdio", "command": "oracle-mcp", "args": [] }
+    }
+  }
+  ```
+- The MCP `consult` tool honors `~/.oracle/config.json` defaults (engine/model/search/prompt suffix/heartbeat/background/filesReport) unless the caller overrides them.
+
 ## 1.1.0 — 2025-11-17
 
 Highlights
