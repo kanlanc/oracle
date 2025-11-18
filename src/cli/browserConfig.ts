@@ -55,10 +55,16 @@ export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<B
   if (options.remoteChrome) {
     const parts = options.remoteChrome.split(':');
     if (parts.length === 2) {
-      remoteChrome = {
-        host: parts[0],
-        port: parseInt(parts[1], 10),
-      };
+      const port = Number.parseInt(parts[1], 10);
+
+      // Validate port is a valid number in valid range
+      if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+        throw new Error(
+          `Invalid remote-chrome port: "${parts[1]}". Expected a number between 1 and 65535.`
+        );
+      }
+
+      remoteChrome = { host: parts[0], port };
     } else {
       throw new Error(`Invalid remote-chrome format: ${options.remoteChrome}. Expected host:port`);
     }
