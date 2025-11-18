@@ -12,6 +12,7 @@ import {
 } from '../sessionManager.js';
 import type { OracleResponseMetadata } from '../oracle.js';
 import { renderMarkdownAnsi } from './markdownRenderer.js';
+import { formatElapsed } from '../oracle/format.js';
 
 const isTty = (): boolean => Boolean(process.stdout.isTTY);
 const dim = (text: string): string => (isTty() ? kleur.dim(text) : text);
@@ -39,12 +40,16 @@ export async function showStatus({ hours, includeAll, limit, showExamples = fals
     return;
   }
   console.log(chalk.bold('Recent Sessions'));
+  console.log(chalk.dim('Timestamp             Chars  Cost  Status     Model      ID'));
   for (const entry of entries) {
     const statusRaw = (entry.status || 'unknown').padEnd(9);
     const status = richTty ? colorStatus(entry.status ?? 'unknown', statusRaw) : statusRaw;
     const model = (entry.model || 'n/a').padEnd(9);
     const created = formatTimestamp(entry.createdAt);
-    console.log(`${created} | ${status} | ${model} | ${entry.id}`);
+    const chars = entry.options?.prompt?.length ?? entry.promptPreview?.length ?? 0;
+    const charLabel = chars > 0 ? String(chars).padStart(5) : '    -';
+    const costLabel = '   -';
+    console.log(`${created} | ${charLabel} | ${costLabel} | ${status} | ${model} | ${entry.id}`);
   }
   if (truncated) {
     console.log(
@@ -248,7 +253,14 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
         }
         if (latest.usage && initialStatus === 'running') {
           const usage = latest.usage;
-          console.log(`\nFinished (tok i/o/r/t: ${usage.inputTokens}/${usage.outputTokens}/${usage.reasoningTokens}/${usage.totalTokens})`);
+          const summary = formatCompletionSummary(latest);
+          if (summary) {
+            console.log(`\n${chalk.green.bold(summary)}`);
+          } else {
+            console.log(
+              `\nFinished (tok i/o/r/t: ${usage.inputTokens}/${usage.outputTokens}/${usage.reasoningTokens}/${usage.totalTokens})`,
+            );
+          }
         }
       }
       break;
@@ -442,6 +454,18 @@ function formatTimestamp(iso: string): string {
   };
   const formatted = date.toLocaleString(locale, opts);
   return formatted.replace(/(, )(\d:)/, '$1 $2');
+}
+
+export function formatCompletionSummary(metadata: SessionMetadata): string | null {
+  if (!metadata.usage || metadata.elapsedMs == null) {
+    return null;
+  }
+  const modeLabel = metadata.mode === 'browser' ? `${metadata.model ?? 'n/a'}[browser]` : metadata.model ?? 'n/a';
+  const usage = metadata.usage;
+  const tokensDisplay = `${usage.inputTokens}/${usage.outputTokens}/${usage.reasoningTokens}/${usage.totalTokens}`;
+  const filesCount = metadata.options?.file?.length ?? 0;
+  const filesPart = filesCount > 0 ? ` | files=${filesCount}` : '';
+  return `Finished in ${formatElapsed(metadata.elapsedMs)} (${modeLabel} | tok(i/o/r/t)=${tokensDisplay}${filesPart})`;
 }
 
 async function readStoredPrompt(sessionId: string): Promise<string | null> {

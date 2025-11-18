@@ -25,6 +25,13 @@ Notifications are powered by [`toasted-notifier`](https://github.com/Aetherinox/
 
 If the OS backend is missing, Oracle logs a one-line skip reason instead of failing the session.
 
+macOS note: The bundled `terminal-notifier` can occasionally lose its execute bit after download. Oracle automatically re-chmods it on first failure; if it still can’t run, clear quarantine manually:
+
+```bash
+xattr -dr com.apple.quarantine \ \
+  $(pnpm root)/toasted-notifier/vendor/mac.noindex/terminal-notifier.app
+```
+
 ## Sound toggle
 
 Keep sound off during automated or shared environments; enable it when you truly want an audible ping (e.g., `--notify-sound`).

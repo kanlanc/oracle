@@ -3,6 +3,9 @@ import { formatUSD, formatNumber } from '../oracle/format.js';
 import { MODEL_CONFIGS } from '../oracle/config.js';
 import type { SessionMode, SessionMetadata } from '../sessionManager.js';
 import type { NotifyConfig } from '../config.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { createRequire } from 'node:module';
 
 export interface NotificationSettings {
   enabled: boolean;
@@ -72,6 +75,19 @@ export async function sendSessionNotification(
       sound: settings.sound,
     });
   } catch (error) {
+    if (isMacExecError(error)) {
+      const repaired = await repairMacNotifier(log);
+      if (repaired) {
+        try {
+          await notifier.notify({ title, message, sound: settings.sound });
+          return;
+        } catch (retryError) {
+          const reason = retryError instanceof Error ? retryError.message : String(retryError);
+          log(`(notify skipped after retry: ${reason})`);
+          return;
+        }
+      }
+    }
     const reason = error instanceof Error ? error.message : String(error);
     log(`(notify skipped: ${reason})`);
   }
@@ -118,6 +134,49 @@ function parseToggle(value: string | undefined): boolean | undefined {
 
 function bool(value: unknown): boolean {
   return Boolean(value && String(value).length > 0);
+}
+
+function isMacExecError(error: unknown): boolean {
+  return Boolean(
+    process.platform === 'darwin' &&
+    error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    (error as { code?: string }).code === 'EACCES'
+  );
+}
+
+async function repairMacNotifier(log: (message: string) => void): Promise<boolean> {
+  const binPath = macNotifierPath();
+  if (!binPath) return false;
+  try {
+    await fs.chmod(binPath, 0o755);
+    return true;
+  } catch (chmodError) {
+    const reason = chmodError instanceof Error ? chmodError.message : String(chmodError);
+    log(`(notify repair failed: ${reason} — try: xattr -dr com.apple.quarantine "${path.dirname(binPath)}")`);
+    return false;
+  }
+}
+
+function macNotifierPath(): string | null {
+  if (process.platform !== 'darwin') return null;
+  try {
+    const req = createRequire(import.meta.url);
+    const modPath = req.resolve('toasted-notifier');
+    const base = path.dirname(modPath);
+    return path.join(
+      base,
+      'vendor',
+      'mac.noindex',
+      'terminal-notifier.app',
+      'Contents',
+      'MacOS',
+      'terminal-notifier',
+    );
+  } catch {
+    return null;
+  }
 }
 
 function muteByConfig(env: NodeJS.ProcessEnv, config?: NotifyConfig): boolean {
