@@ -89,6 +89,9 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
     await Network.clearBrowserCookies();
 
     if (config.cookieSync) {
+      logger(
+        'Heads-up: macOS may prompt for your Keychain password to read Chrome cookies; approve it to stay signed in or rerun with --browser-no-cookie-sync / --browser-allow-cookie-errors.',
+      );
       const cookieCount = await syncCookies(
         Network,
         config.url,
