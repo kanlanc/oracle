@@ -382,6 +382,45 @@ describe('api key logging', () => {
     expect(finished).toContain('tok(i/o/r/t)=');
     expect(finished).not.toContain('tokens (input/output/reasoning/total)=');
   });
+
+  test('verbose footer separation still clean for non-streamed output', async () => {
+    const client: ClientLike = {
+      responses: {
+        stream: async () =>
+          new MockStream([], {
+            id: 'resp-id',
+            status: 'completed',
+            usage: { input_tokens: 5, output_tokens: 0, reasoning_tokens: 0, total_tokens: 5 },
+            output: [
+              {
+                type: 'message',
+                content: [{ type: 'text', text: 'Hello world' }],
+              },
+            ],
+          }),
+      },
+    } as ClientLike;
+    const logs: string[] = [];
+    await runOracle(
+      {
+        prompt: 'Greeting',
+        model: 'gpt-5-pro',
+        background: false,
+        verbose: true,
+      },
+      {
+        apiKey: 'sk-test',
+        client,
+        log: (msg: string) => logs.push(msg),
+        write: () => true,
+      },
+    );
+
+    const statusIndex = logs.findIndex((line) => line.includes('Response status:'));
+    expect(statusIndex).toBeGreaterThan(0);
+    // Non-streamed runs keep the single blank separator before verbose footer (but no run-on).
+    expect(logs[statusIndex - 1]).toBe('');
+  });
 });
 
 describe('runOracle preview mode', () => {
