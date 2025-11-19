@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 - `--dry-run [summary|json|full]` is now the single preview flag; `--preview` remains as a hidden alias for compatibility.
 
 ### Changed
-- Browser engine is now macOS-only; Windows and Linux runs fail fast with guidance to re-run via `--engine api`.
+- Browser engine is now macOS-only; Windows and Linux runs fail fast with guidance to re-run via `--engine api`. Cross-platform browser support is in progress.
 - Browser fallback tips focus on `--browser-bundle-files`, making it clear users can drag the single bundled file into ChatGPT when automation fails.
 - Removed README reference to the unsupported `--show-model-id` flag to avoid CLI errors.
 - Sessions TUI separates recent vs older runs, adds an Older/Newer action, keeps headers aligned with rows, and avoids separator crashes while preserving an always-selectable “ask oracle” entry.
