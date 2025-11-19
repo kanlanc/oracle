@@ -450,6 +450,20 @@ describe('api key logging', () => {
               },
             ],
           }),
+        async create() {
+          return {
+            id: 'resp-id',
+            status: 'completed',
+            output: [{ type: 'message', content: [{ type: 'text', text: 'Hello world' }] }],
+          } as OracleResponse;
+        },
+        async retrieve() {
+          return {
+            id: 'resp-id',
+            status: 'completed',
+            output: [{ type: 'message', content: [{ type: 'text', text: 'Hello world' }] }],
+          } as OracleResponse;
+        },
       },
     } as ClientLike;
     const logs: string[] = [];
@@ -472,6 +486,72 @@ describe('api key logging', () => {
     expect(statusIndex).toBeGreaterThan(0);
     // Non-streamed runs keep the single blank separator before verbose footer (but no run-on).
     expect(logs[statusIndex - 1]).toBe('');
+  });
+});
+
+describe('timeouts', () => {
+  test('non-pro run respects short timeout override', async () => {
+    const nowRef = { t: 0 };
+    const wait = async (ms: number) => {
+      nowRef.t += ms;
+    };
+    const client: ClientLike = {
+      responses: {
+        async stream() {
+          return new MockStream([], buildResponse());
+        },
+        async create() {
+          return { id: 'bg-1', status: 'in_progress', output: [] } as OracleResponse;
+        },
+        async retrieve() {
+          return { id: 'bg-1', status: 'in_progress', output: [] } as OracleResponse;
+        },
+      },
+    };
+
+    await expect(
+      runOracle(
+        { prompt: 'hi', model: 'gpt-5.1', background: true, timeoutSeconds: 1 },
+        { client, log: () => {}, write: () => true, wait, now: () => nowRef.t },
+      ),
+    ).rejects.toBeInstanceOf(OracleTransportError);
+  });
+
+  test('gpt-5-pro auto timeout allows long background runs', async () => {
+    const nowRef = { t: 0 };
+    const wait = async (ms: number) => {
+      nowRef.t += ms;
+    };
+    let pollCount = 0;
+    const client: ClientLike = {
+      responses: {
+        async stream() {
+          return new MockStream([], buildResponse());
+        },
+        async create() {
+          return { id: 'bg-2', status: 'in_progress', output: [] } as OracleResponse;
+        },
+        async retrieve() {
+          pollCount += 1;
+          if (pollCount >= 3) {
+            return {
+              id: 'bg-2',
+              status: 'completed',
+              output: [{ type: 'message', content: [{ type: 'text', text: 'done' }] }],
+              usage: { input_tokens: 1, output_tokens: 0, reasoning_tokens: 0, total_tokens: 1 },
+            } as OracleResponse;
+          }
+          return { id: 'bg-2', status: 'in_progress', output: [] } as OracleResponse;
+        },
+      },
+    };
+
+    const result = await runOracle(
+      { prompt: 'hi', model: 'gpt-5-pro', background: true },
+      { client, log: () => {}, write: () => true, wait, now: () => nowRef.t },
+    );
+    expect(result.mode).toBe('live');
+    expect(pollCount).toBeGreaterThanOrEqual(3);
   });
 });
 

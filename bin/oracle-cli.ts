@@ -31,6 +31,7 @@ import {
   resolveApiModel,
   inferModelFromLabel,
   parseHeartbeatOption,
+  parseTimeoutOption,
 } from '../src/cli/options.js';
 import { shouldDetachSession } from '../src/cli/detach.js';
 import { applyHiddenAliases } from '../src/cli/hiddenAliases.js';
@@ -76,6 +77,7 @@ interface CliOptions extends OptionValues {
   sessionId?: string;
   engine?: EngineMode;
   browser?: boolean;
+  timeout?: number | 'auto';
   browserChromeProfile?: string;
   browserChromePath?: string;
   browserUrl?: string;
@@ -178,6 +180,14 @@ program
   )
   .addOption(
     new Option('--[no-]notify-sound', 'Play a notification sound on completion (default off).').default(undefined),
+  )
+  .addOption(
+    new Option(
+      '--timeout <seconds|auto>',
+      'Overall timeout before aborting the API call (auto = 20m for gpt-5-pro, 30s otherwise).',
+    )
+      .argParser(parseTimeoutOption)
+      .default('auto'),
   )
   .option('--dry-run', 'Validate inputs and show token estimates without calling the model.', false)
   .addOption(
@@ -339,6 +349,7 @@ function buildRunOptions(options: ResolvedCliOptions, overrides: Partial<RunOrac
     maxInput: overrides.maxInput ?? options.maxInput,
     maxOutput: overrides.maxOutput ?? options.maxOutput,
     system: overrides.system ?? options.system,
+    timeoutSeconds: overrides.timeoutSeconds ?? (options.timeout as number | 'auto' | undefined),
     silent: overrides.silent ?? options.silent,
     search: overrides.search ?? options.search,
     preview: overrides.preview ?? undefined,

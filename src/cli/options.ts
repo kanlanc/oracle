@@ -90,6 +90,17 @@ export function normalizeBaseUrl(value: string | undefined): string | undefined 
   return trimmed?.length ? trimmed : undefined;
 }
 
+export function parseTimeoutOption(value: string | undefined): number | 'auto' | undefined {
+  if (value == null) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'auto') return 'auto';
+  const parsed = Number.parseFloat(normalized);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    throw new InvalidArgumentError('Timeout must be a positive number of seconds or "auto".');
+  }
+  return parsed;
+}
+
 export function resolveApiModel(modelValue: string): ModelName {
   const normalized = normalizeModelOption(modelValue).toLowerCase();
   if (normalized in MODEL_CONFIGS) {

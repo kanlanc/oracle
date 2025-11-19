@@ -104,6 +104,8 @@ export interface RunOracleOptions {
   browserInlineFiles?: boolean;
   browserBundleFiles?: boolean;
   background?: boolean;
+  /** Number of seconds to wait before timing out, or 'auto' to use model defaults. */
+  timeoutSeconds?: number | 'auto';
 }
 
 export interface UsageSummary {

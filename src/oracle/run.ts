@@ -43,6 +43,8 @@ const BACKGROUND_MAX_WAIT_MS = 30 * 60 * 1000;
 const BACKGROUND_POLL_INTERVAL_MS = 5000;
 const BACKGROUND_RETRY_BASE_MS = 3000;
 const BACKGROUND_RETRY_MAX_MS = 15000;
+const DEFAULT_TIMEOUT_NON_PRO_MS = 30_000;
+const DEFAULT_TIMEOUT_PRO_MS = 20 * 60 * 1000;
 
 const defaultWait = (ms: number): Promise<void> =>
   new Promise((resolve) => {
@@ -132,6 +134,13 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
   const fileCount = files.length;
   const cliVersion = getCliVersion();
   const richTty = process.stdout.isTTY && chalk.level > 0;
+  const timeoutSeconds =
+    options.timeoutSeconds === undefined || options.timeoutSeconds === 'auto'
+      ? options.model === 'gpt-5-pro'
+        ? DEFAULT_TIMEOUT_PRO_MS / 1000
+        : DEFAULT_TIMEOUT_NON_PRO_MS / 1000
+      : options.timeoutSeconds;
+  const timeoutMs = timeoutSeconds * 1000;
   // Track the concrete model id we dispatch to (especially for Gemini preview aliases)
   const effectiveModelId =
     options.effectiveModelId ??
@@ -222,7 +231,7 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
   }
   const stopOscProgress = startOscProgress({
     label: useBackground ? 'Waiting for API (background)' : 'Waiting for API',
-    targetMs: useBackground ? BACKGROUND_MAX_WAIT_MS : 10 * 60_000,
+    targetMs: useBackground ? timeoutMs : Math.min(timeoutMs, 10 * 60_000),
     write,
   });
 
@@ -231,6 +240,15 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
   let elapsedMs = 0;
   let sawTextDelta = false;
   let answerHeaderPrinted = false;
+  const timeoutExceeded = (): boolean => now() - runStart >= timeoutMs;
+  const throwIfTimedOut = () => {
+    if (timeoutExceeded()) {
+      throw new OracleTransportError(
+        'client-timeout',
+        `Timed out waiting for API response after ${formatElapsed(timeoutMs)}.`,
+      );
+    }
+  };
   const ensureAnswerHeader = () => {
     if (!options.silent && !answerHeaderPrinted) {
       log('');
@@ -248,6 +266,7 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
         wait,
         heartbeatIntervalMs: options.heartbeatIntervalMs,
         now,
+        maxWaitMs: timeoutMs,
       });
       elapsedMs = now() - runStart;
     } else {
@@ -262,20 +281,22 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
         stopHeartbeat?.();
         stopHeartbeat = null;
       };
-      if (options.heartbeatIntervalMs && options.heartbeatIntervalMs > 0) {
-        heartbeatActive = true;
-        stopHeartbeat = startHeartbeat({
-          intervalMs: options.heartbeatIntervalMs,
-          log: (message) => log(message),
-          isActive: () => heartbeatActive,
-          makeMessage: (elapsedMs) => {
-            const elapsedText = formatElapsed(elapsedMs);
-            return `API connection active — ${elapsedText} elapsed. Expect up to ~10 min before GPT-5 responds.`;
-          },
-        });
-      }
+        if (options.heartbeatIntervalMs && options.heartbeatIntervalMs > 0) {
+          heartbeatActive = true;
+          stopHeartbeat = startHeartbeat({
+            intervalMs: options.heartbeatIntervalMs,
+            log: (message) => log(message),
+            isActive: () => heartbeatActive,
+            makeMessage: (elapsedMs) => {
+              const elapsedText = formatElapsed(elapsedMs);
+              const timeoutLabel = Math.round(timeoutMs / 60000);
+              return `API connection active — ${elapsedText} elapsed. Timeout in ~${timeoutLabel} min if no response.`;
+            },
+          });
+        }
       try {
         for await (const event of stream) {
+          throwIfTimedOut();
           const isTextDelta =
             event.type === 'chunk' || event.type === 'response.output_text.delta';
           if (isTextDelta) {
@@ -288,6 +309,7 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
             }
           }
         }
+        throwIfTimedOut();
       } catch (streamError) {
         // stream.abort() is not available on the interface
         stopHeartbeatNow();
@@ -296,6 +318,7 @@ export async function runOracle(options: RunOracleOptions, deps: RunOracleDeps =
         throw transportError;
       }
       response = await stream.finalResponse();
+      throwIfTimedOut();
       stopHeartbeatNow();
       elapsedMs = now() - runStart;
     }
@@ -452,10 +475,11 @@ interface BackgroundExecutionParams {
   wait: (ms: number) => Promise<void>;
   heartbeatIntervalMs?: number;
   now: () => number;
+  maxWaitMs: number;
 }
 
 async function executeBackgroundResponse(params: BackgroundExecutionParams): Promise<OracleResponse> {
-  const { client, requestBody, log, wait, heartbeatIntervalMs, now } = params;
+  const { client, requestBody, log, wait, heartbeatIntervalMs, now, maxWaitMs } = params;
   const initialResponse = await client.responses.create(requestBody);
   if (!initialResponse || !initialResponse.id) {
     throw new OracleResponseError('API did not return a response ID for the background run.', initialResponse);
@@ -498,7 +522,7 @@ async function executeBackgroundResponse(params: BackgroundExecutionParams): Pro
       log,
       wait,
       now,
-      maxWaitMs: BACKGROUND_MAX_WAIT_MS,
+      maxWaitMs,
     });
   } finally {
     stopHeartbeatNow();
