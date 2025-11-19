@@ -51,7 +51,6 @@ export async function launchTui({ version }: LaunchTuiOptions): Promise<void> {
   let showingOlder = false;
   // Reuse a single global key handler to avoid stacking listeners across prompts
   let globalInput: NodeJS.ReadStream | undefined;
-  let globalPromptClose: (() => void) | undefined;
   const keyState = {
     shortcutSelection: null as string | null,
     hasOlderPrev: false,
@@ -59,21 +58,22 @@ export async function launchTui({ version }: LaunchTuiOptions): Promise<void> {
     showingOlder: false,
     olderTotal: 0,
   };
+  let resolveShortcut: ((value: string) => void) | null = null;
   const onKeypressGlobal = (_: unknown, key: { name?: string }): void => {
     if (!key?.name) return;
     if (keyState.shortcutSelection) return;
     if (!keyState.showingOlder && keyState.olderTotal > 0 && key.name === 'pagedown') {
       keyState.shortcutSelection = '__older__';
-      globalPromptClose?.();
+      resolveShortcut?.('__older__');
       return;
     }
     if (keyState.showingOlder) {
       if (key.name === 'pagedown' && keyState.hasOlderNext) {
         keyState.shortcutSelection = '__more__';
-        globalPromptClose?.();
+        resolveShortcut?.('__more__');
       } else if (key.name === 'pageup') {
         keyState.shortcutSelection = keyState.hasOlderPrev ? '__prev__' : '__reset__';
-        globalPromptClose?.();
+        resolveShortcut?.(keyState.shortcutSelection);
       }
     }
   };
@@ -134,6 +134,7 @@ export async function launchTui({ version }: LaunchTuiOptions): Promise<void> {
     keyState.shortcutSelection = null;
 
     const selection = await new Promise<string>((resolve) => {
+      let _resolved = false;
       const prompt = inquirer.prompt<{ selection: string }>([
         {
           name: 'selection',
@@ -150,7 +151,10 @@ export async function launchTui({ version }: LaunchTuiOptions): Promise<void> {
       };
       const rl = promptUi.ui?.rl;
       globalInput = (rl as unknown as { input?: NodeJS.ReadStream })?.input;
-      globalPromptClose = promptUi.ui?.close?.bind(promptUi.ui);
+      resolveShortcut = (value) => {
+        _resolved = true;
+        resolve(value);
+      };
       if (globalInput) {
         globalInput.setMaxListeners?.(0);
         globalInput.off('keypress', onKeypressGlobal);
@@ -158,14 +162,23 @@ export async function launchTui({ version }: LaunchTuiOptions): Promise<void> {
       }
 
       prompt
-        .then(({ selection: answer }) => resolve(keyState.shortcutSelection ?? answer))
+        .then(({ selection: answer }) => {
+          _resolved = true;
+          resolve(keyState.shortcutSelection ?? answer);
+        })
         .catch((error) => {
           console.error(
             chalk.red('Paging failed; returning to recent list.'),
             error instanceof Error ? error.message : error,
           );
+          _resolved = true;
           resolve('__reset__');
         });
+    }).finally(() => {
+      if (globalInput) {
+        globalInput.off('keypress', onKeypressGlobal);
+      }
+      resolveShortcut = null;
     });
 
     if (selection === '__exit__') {
