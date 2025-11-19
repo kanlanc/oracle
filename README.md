@@ -17,6 +17,7 @@ Oracle gives your agents a simple, reliable way to **bundle a prompt plus the ri
 
 - **API engine** — Calls the OpenAI Responses API. Needs `OPENAI_API_KEY`.
 - **Browser engine** — Automates ChatGPT in Chrome so you can use your Pro account directly. Toggle with `--engine browser`; no API key required.
+  - Duration flags such as `--browser-timeout` / `--browser-input-timeout` accept `ms`, `s`, `m`, or `h` (and you can chain them: `1h2m10s`). Defaults are 20 m / 30 s.
 
 If you omit `--engine`, Oracle prefers the API engine when `OPENAI_API_KEY` is present; otherwise it falls back to browser mode. Switch explicitly with `-e, --engine {api|browser}` when you want to override the auto choice. Everything else (prompt assembly, file handling, session logging) stays the same.
 

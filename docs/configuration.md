@@ -21,7 +21,7 @@ Oracle reads an optional per-user config from `~/.oracle/config.json`. The file 
     chromeProfile: "Default",
     chromePath: null,
     url: null,
-    timeoutMs: 900000,
+    timeoutMs: 1200000,
     inputTimeoutMs: 30000,
     headless: false,
     hideWindow: false,

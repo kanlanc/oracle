@@ -6,6 +6,11 @@ describe('parseDuration', () => {
     ['500ms', 1234, 500],
     ['5s', 100, 5000],
     ['2m', 100, 120000],
+    ['1h', 0, 3_600_000],
+    ['3m10s', 0, 190_000],
+    ['1h2m1s', 0, 3_721_000],
+    ['1m250ms', 0, 60_250],
+    [' 1H ', 0, 3_600_000],
     ['42', 0, 42],
   ])('parses %s with fallback %d', (input, fallback, expected) => {
     expect(parseDuration(input, fallback)).toBe(expected);

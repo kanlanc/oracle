@@ -5,7 +5,7 @@ export const DEFAULT_BROWSER_CONFIG: ResolvedBrowserConfig = {
   chromeProfile: null,
   chromePath: null,
   url: CHATGPT_URL,
-  timeoutMs: 900_000,
+  timeoutMs: 1_200_000,
   inputTimeoutMs: 30_000,
   cookieSync: true,
   cookieNames: null,

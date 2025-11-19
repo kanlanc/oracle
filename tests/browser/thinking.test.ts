@@ -9,7 +9,7 @@ describe('formatThinkingLog', () => {
   });
 
   test('caps at 100% when exceeding target', () => {
-    const line = formatThinkingLog(0, 900_000, 'finishing', '');
+    const line = formatThinkingLog(0, 1_200_000, 'finishing', '');
     expect(line).toContain('100%');
   });
 });

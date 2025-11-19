@@ -6,7 +6,7 @@ import type { ModelName } from '../oracle.js';
 import { DEFAULT_MODEL_TARGET, parseDuration } from '../browserMode.js';
 import type { CookieParam } from '../browser/types.js';
 
-const DEFAULT_BROWSER_TIMEOUT_MS = 900_000;
+const DEFAULT_BROWSER_TIMEOUT_MS = 1_200_000;
 const DEFAULT_BROWSER_INPUT_TIMEOUT_MS = 30_000;
 const DEFAULT_CHROME_PROFILE = 'Default';
 

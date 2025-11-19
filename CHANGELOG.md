@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Reject prompts shorter than 20 characters with a friendly hint (prevents accidental single-character runs). Override via ORACLE_MIN_PROMPT_CHARS for automated environments.
+- Browser engine default timeout bumped from 15m (900s) to 20m (1200s) so long GPT-5 Pro responses don’t get cut off; CLI docs/help text now reflect the new ceiling.
+- Duration flags such as `--browser-timeout`/`--browser-input-timeout` now accept chained units (`1h2m10s`, `3m10s`, etc.) plus `h`, `m`, `s`, or `ms` suffixes, matching the formats we already log.
 
 ## 1.3.0 — 2025-11-19
 
