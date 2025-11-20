@@ -117,6 +117,8 @@ Add `--render` (alias `--render-markdown`) when attaching to pretty-print the st
 
 **Wait vs no-wait:** gpt-5.1-pro API runs default to detaching (shows a reattach hint); add `--wait` to stay attached. gpt-5.1, gpt-5.1-codex, and browser runs block by default. You can reattach anytime via `oracle session <id>`.
 
+**Duplicate prompt guard:** If a session with the exact same prompt is already running, new runs are blocked with a reminder to reattach. Use `--force` only when you truly want a second run of the same prompt (e.g., to compare settings).
+
 ## Testing
 
 ```bash
