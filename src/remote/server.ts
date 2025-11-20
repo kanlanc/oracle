@@ -43,7 +43,6 @@ export async function createRemoteServer(
     : (_formatter: (msg: string) => string, msg: string) => msg;
   // Single-flight guard: remote Chrome can only host one run at a time, so we serialize requests.
   let busy = false;
-  let cachedInlineCookies: CookieParam[] | null = null;
 
   if (!process.listenerCount('unhandledRejection')) {
     process.on('unhandledRejection', (reason) => {
@@ -134,15 +133,10 @@ export async function createRemoteServer(
       }) as BrowserLogger;
       automationLogger.verbose = Boolean(payload.options.verbose);
 
-      // Refresh cookies if we don't have any cached yet
-      const targetUrl = payload?.browserConfig?.url ?? CHATGPT_URL;
-      const hostCookies = cachedInlineCookies?.length
-        ? cachedInlineCookies
-        : await loadLocalChatgptCookies(logger, targetUrl);
-      if (hostCookies && hostCookies.length > 0 && payload.browserConfig) {
-        cachedInlineCookies = hostCookies;
-        payload.browserConfig.inlineCookies = hostCookies;
-        payload.browserConfig.inlineCookiesSource = 'remote-host';
+      // Remote runs always rely on the host's own Chrome profile; ignore any inline cookie transfer.
+      if (payload.browserConfig) {
+        payload.browserConfig.inlineCookies = null;
+        payload.browserConfig.inlineCookiesSource = null;
         payload.browserConfig.cookieSync = true;
       }
 
@@ -199,14 +193,16 @@ export async function createRemoteServer(
 }
 
 export async function serveRemote(options: RemoteServerOptions = {}): Promise<void> {
-  const server = await createRemoteServer(options);
-  // Warm-up: check if we already have local ChatGPT cookies; if not, open login prompt and leave it open.
+  // Warm-up: ensure this host has a ChatGPT login before accepting runs.
   const cookies = await loadLocalChatgptCookies(console.log, CHATGPT_URL);
-  if (cookies?.length) {
-    console.log(`Detected ${cookies.length} ChatGPT cookies on this host; runs should stay signed in.`);
-  } else {
-    console.log('No ChatGPT cookies detected; opened chatgpt.com for login. Sign in once, leave the window open, then rerun.');
+  if (!cookies || cookies.length === 0) {
+    console.log('No ChatGPT cookies detected on this host.');
+    console.log('Opened chatgpt.com for login. Sign in, then restart `oracle serve` to continue.');
+    return;
   }
+  console.log(`Detected ${cookies.length} ChatGPT cookies on this host; runs will reuse this session.`);
+
+  const server = await createRemoteServer(options);
   await new Promise<void>((resolve) => {
     const shutdown = () => {
       console.log('Shutting down remote service...');
@@ -311,6 +307,7 @@ async function loadLocalChatgptCookies(logger: (message: string) => void, target
     return cookies;
   } catch (error) {
     logger(`Unable to load local ChatGPT cookies on this host: ${error instanceof Error ? error.message : String(error)}`);
+    triggerLocalLoginPrompt(logger, targetUrl);
     return null;
   }
 }
