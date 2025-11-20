@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 - GPT-5.1 Pro API support; it’s the new default model.
 
 ### Changed
-- Restored `chrome-cookies-secure` (upstream dependency) with a thin adapter and a runtime keytar shim so Chrome/Chromium/Edge/Brave/Vivaldi all work without maintaining our own sqlite/crypto code.
+- Browser cookie sync now relies on upstream `chrome-cookies-secure` plus a thin adapter and keytar shim so Chrome/Chromium/Edge/Brave/Vivaldi all work without maintaining our own sqlite/crypto code.
 - Reject prompts shorter than 20 characters with a friendly hint for pro-tier models (`gpt-5.1-pro`) only (prevents accidental costly runs while leaving cheaper models unblocked). Override via ORACLE_MIN_PROMPT_CHARS for automated environments.
 - Browser engine default timeout bumped from 15m (900s) to 20m (1200s) so long GPT-5.x Pro responses don’t get cut off; CLI docs/help text now reflect the new ceiling.
 - Reject prompts shorter than 20 characters with a friendly hint for pro-tier models (`gpt-5.1-pro`) only (prevents accidental costly runs while leaving cheaper models unblocked). Override via ORACLE_MIN_PROMPT_CHARS for automated environments.
