@@ -39,6 +39,12 @@ export async function createRemoteServer(
   let busy = false;
   let cachedInlineCookies: CookieParam[] | null = null;
 
+  if (!process.listenerCount('unhandledRejection')) {
+    process.on('unhandledRejection', (reason) => {
+      logger(`Unhandled promise rejection in remote server: ${reason instanceof Error ? reason.message : String(reason)}`);
+    });
+  }
+
   server.on('request', async (req, res) => {
     if (req.method === 'GET' && req.url === '/status') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -215,7 +221,7 @@ async function loadLocalChatgptCookies(logger: (message: string) => void): Promi
       }),
     ).catch((error) => {
       logger(`Unable to load local ChatGPT cookies on remote host: ${error instanceof Error ? error.message : String(error)}`);
-      return null;
+      return [];
     });
     if (!cookies || cookies.length === 0) {
       logger('No local ChatGPT cookies found on remote host. Please log in once; opening ChatGPT...');

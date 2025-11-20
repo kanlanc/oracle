@@ -8,6 +8,8 @@ const MODEL_ID_MAP: Record<ModelName, string> = {
   'gpt-5-pro': 'gpt-5-pro',
   'gpt-5.1': 'gpt-5.1',
   'gpt-5.1-codex': 'gpt-5.1-codex',
+  'claude-4.5-sonnet': 'claude-4.5-sonnet',
+  'claude-4.1-opus': 'claude-4.1-opus',
 };
 
 export function resolveGeminiModelId(modelName: ModelName): string {
