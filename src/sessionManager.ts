@@ -354,6 +354,7 @@ export async function initializeSession(
       file: options.file ?? [],
       model: options.model,
       models: modelList,
+      effectiveModelId: options.effectiveModelId,
       maxInput: options.maxInput,
       system: options.system,
       maxOutput: options.maxOutput,

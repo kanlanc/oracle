@@ -12,8 +12,6 @@ import type { SessionMetadata, SessionMode, BrowserSessionConfig } from '../src/
 import { sessionStore, pruneOldSessions } from '../src/sessionStore.js';
 import { DEFAULT_MODEL, runOracle, renderPromptMarkdown, readFiles } from '../src/oracle.js';
 import type { ModelName, PreviewMode, RunOracleOptions } from '../src/oracle.js';
-import { CHATGPT_URL } from '../src/browserMode.js';
-import { loadChromeCookies } from '../src/browser/chromeCookies.js';
 import { createRemoteBrowserExecutor } from '../src/remote/client.js';
 import { applyHelpStyling } from '../src/cli/help.js';
 import {
@@ -115,7 +113,11 @@ interface CliOptions extends OptionValues {
   retainHours?: number;
 }
 
-type ResolvedCliOptions = Omit<CliOptions, 'model'> & { model: ModelName; models?: ModelName[] };
+type ResolvedCliOptions = Omit<CliOptions, 'model'> & {
+  model: ModelName;
+  models?: ModelName[];
+  effectiveModelId?: string;
+};
 
 function normalizeRemoteCookieSource(input?: string | null): 'local' | 'none' | undefined {
   if (!input) {
@@ -225,7 +227,6 @@ program
     '-m, --model <model>',
     'Model to target (gpt-5.1-pro | gpt-5.1 | gpt-5.1-codex, or ChatGPT labels like "5.1 Instant" for browser runs).',
     normalizeModelOption,
-    DEFAULT_MODEL,
   )
   .addOption(
     new Option(
@@ -336,11 +337,6 @@ program
   )
   .addOption(new Option('--remote-host <host:port>', 'Delegate browser runs to a remote `oracle serve` instance.').hideHelp())
   .addOption(new Option('--remote-token <token>', 'Access token for the remote `oracle serve` instance.').hideHelp())
-  .addOption(
-    new Option('--remote-cookie-source <mode>', 'Cookie source for remote runs (local | none).')
-      .choices(['local', 'none'])
-      .hideHelp(),
-  )
   .addOption(
     new Option('--browser-inline-files', 'Paste files directly into the ChatGPT composer instead of uploading attachments.').default(false),
   )
@@ -559,8 +555,8 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   const helpRequested = rawCliArgs.some((arg: string) => arg === '--help' || arg === '-h');
   const multiModelProvided = Array.isArray(options.models) && options.models.length > 0;
   if (multiModelProvided) {
-    const modelSource = program.getOptionValueSource?.('model');
-    if (modelSource === 'cli') {
+    const modelFromConfigOrCli = normalizeModelOption(options.model ?? userConfig.model ?? '');
+    if (modelFromConfigOrCli) {
       throw new Error('--models cannot be combined with --model.');
     }
   }
@@ -596,10 +592,8 @@ async function runRootCommand(options: CliOptions): Promise<void> {
 
   const remoteHost = options.remoteHost ?? process.env.ORACLE_REMOTE_HOST;
   const remoteToken = options.remoteToken ?? process.env.ORACLE_REMOTE_TOKEN;
-  const remoteCookieSource =
-    normalizeRemoteCookieSource(options.remoteCookieSource ?? process.env.ORACLE_REMOTE_COOKIE_SOURCE) ?? 'none';
   if (remoteHost) {
-    console.log(chalk.dim(`Remote browser host detected: ${remoteHost} (cookie source: ${remoteCookieSource})`));
+    console.log(chalk.dim(`Remote browser host detected: ${remoteHost}`));
   }
 
   if (userCliArgs.length === 0) {
@@ -673,9 +667,12 @@ async function runRootCommand(options: CliOptions): Promise<void> {
     }
   }
 
-  const cliModelArg = normalizeModelOption(options.model) || DEFAULT_MODEL;
-  const resolvedModelCandidate: ModelName =
-    engine === 'browser' ? inferModelFromLabel(cliModelArg) : resolveApiModel(cliModelArg);
+  const cliModelArg = normalizeModelOption(options.model) || (multiModelProvided ? '' : DEFAULT_MODEL);
+  const resolvedModelCandidate: ModelName = multiModelProvided
+    ? normalizedMultiModels[0]
+    : engine === 'browser'
+      ? inferModelFromLabel(cliModelArg || DEFAULT_MODEL)
+      : resolveApiModel(cliModelArg || DEFAULT_MODEL);
   const normalizedMultiModels: ModelName[] = multiModelProvided
     ? Array.from(new Set(options.models!.map((entry) => resolveApiModel(entry))))
     : [];
@@ -709,6 +706,7 @@ async function runRootCommand(options: CliOptions): Promise<void> {
     resolvedOptions.models = normalizedMultiModels;
   }
   resolvedOptions.baseUrl = resolvedBaseUrl;
+  resolvedOptions.effectiveModelId = effectiveModelId;
 
   // Decide whether to block until completion:
   // - explicit --wait / --no-wait wins
@@ -845,13 +843,6 @@ async function runRootCommand(options: CliOptions): Promise<void> {
 
   let browserDeps: BrowserSessionRunnerDeps | undefined;
   if (browserConfig && remoteHost) {
-    if (remoteCookieSource !== 'none') {
-      console.log(
-        chalk.dim(
-          `Remote cookie shipping is disabled; ignoring --remote-cookie-source=${remoteCookieSource}. The remote host will use its own Chrome cookies.`,
-        ),
-      );
-    }
     browserDeps = {
       executeBrowser: createRemoteBrowserExecutor({ host: remoteHost, token: remoteToken }),
     };

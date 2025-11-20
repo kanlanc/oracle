@@ -51,9 +51,33 @@ describe('oracle CLI integration', () => {
     expect(metadata.status).toBe('completed');
     expect(metadata.response?.requestId).toBe('mock-req');
     expect(metadata.usage?.totalTokens).toBe(20);
+    expect(metadata.options?.effectiveModelId).toBe('gpt-5.1');
 
     await rm(oracleHome, { recursive: true, force: true });
   }, 15000);
+
+  test('rejects mixing --model and --models regardless of source', async () => {
+    const oracleHome = await mkdtemp(path.join(os.tmpdir(), 'oracle-multi-conflict-'));
+    const env = {
+      ...process.env,
+      // biome-ignore lint/style/useNamingConvention: env var name
+      OPENAI_API_KEY: 'sk-integration',
+      // biome-ignore lint/style/useNamingConvention: env var name
+      ORACLE_HOME_DIR: oracleHome,
+      // biome-ignore lint/style/useNamingConvention: env var name
+      ORACLE_CLIENT_FACTORY: CLIENT_FACTORY,
+    };
+
+    await expect(
+      execFileAsync(
+        process.execPath,
+        [TSX_BIN, CLI_ENTRY, '--prompt', 'conflict', '--model', 'gpt-5.1', '--models', 'gpt-5.1-pro'],
+        { env },
+      ),
+    ).rejects.toThrow(/--models cannot be combined with --model/i);
+
+    await rm(oracleHome, { recursive: true, force: true });
+  }, 10000);
 
   test('runs gpt-5.1-codex via API-only path', async () => {
     const oracleHome = await mkdtemp(path.join(os.tmpdir(), 'oracle-codex-'));

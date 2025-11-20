@@ -155,6 +155,34 @@ describe('attachSession rendering', () => {
     readSessionRequestMock.mockReset();
   });
 
+  test('prints all model runs with status and tokens', async () => {
+    const multiMeta: SessionMetadata = {
+      ...baseMeta,
+      models: [
+        {
+          model: 'gpt-5.1-pro',
+          status: 'completed',
+          usage: { inputTokens: 10, outputTokens: 12, reasoningTokens: 0, totalTokens: 24 },
+        },
+        {
+          model: 'gemini-3-pro',
+          status: 'running',
+          usage: { inputTokens: 10, outputTokens: 0, reasoningTokens: 0, totalTokens: 10 },
+        },
+      ],
+    } as SessionMetadata;
+    readSessionMetadataMock.mockResolvedValue(multiMeta);
+    readSessionLogMock.mockResolvedValue('Answer:\nhi');
+    readSessionRequestMock.mockResolvedValue({ prompt: 'Prompt here' });
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await attachSession('sess', { renderMarkdown: false });
+
+    expect(logSpy).toHaveBeenCalledWith('Models:');
+    expect(logSpy).toHaveBeenCalledWith(expect.stringMatching(/gpt-5\.1-pro.*completed tok=12\/24/));
+    expect(logSpy).toHaveBeenCalledWith(expect.stringMatching(/gemini-3-pro.*running tok=0\/10/));
+  });
+
   test('renders markdown when requested and rich tty', async () => {
     readSessionMetadataMock.mockResolvedValue(baseMeta);
     readSessionLogMock.mockResolvedValue('Answer:\nhello *world*');

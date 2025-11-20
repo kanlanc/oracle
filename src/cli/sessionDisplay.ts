@@ -131,7 +131,17 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
     }
     console.log(`Created: ${metadata.createdAt}`);
     console.log(`Status: ${metadata.status}`);
-    console.log(`Model: ${metadata.model}`);
+    if (metadata.models && metadata.models.length > 0) {
+      console.log('Models:');
+      for (const run of metadata.models) {
+        const usage = run.usage
+          ? ` tok=${run.usage.outputTokens?.toLocaleString() ?? 0}/${run.usage.totalTokens?.toLocaleString() ?? 0}`
+          : '';
+        console.log(`- ${chalk.cyan(run.model)} — ${run.status}${usage}`);
+      }
+    } else if (metadata.model) {
+      console.log(`Model: ${metadata.model}`);
+    }
     const responseSummary = formatResponseMetadata(metadata.response);
     if (responseSummary) {
       console.log(dim(`Response: ${responseSummary}`));
