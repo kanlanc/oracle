@@ -66,6 +66,7 @@ export async function assembleBrowserPrompt(
 
   const MAX_BROWSER_ATTACHMENTS = 10;
   const shouldBundle = !inlineFiles && (runOptions.browserBundleFiles || attachments.length > MAX_BROWSER_ATTACHMENTS);
+  let bundleText: string | null = null;
   if (shouldBundle) {
     const bundleDir = await fs.mkdtemp(path.join(os.tmpdir(), 'oracle-browser-bundle-'));
     const bundlePath = path.join(bundleDir, 'attachments-bundle.txt');
@@ -75,7 +76,7 @@ export async function assembleBrowserPrompt(
       bundleLines.push(section.content.trimEnd());
       bundleLines.push('');
     });
-    const bundleText = `${bundleLines.join('\n').trimEnd()}\n`;
+    bundleText = `${bundleLines.join('\n').trimEnd()}\n`;
     await fs.writeFile(bundlePath, bundleText, 'utf8');
     attachments.length = 0;
     attachments.push({
@@ -94,13 +95,25 @@ export async function assembleBrowserPrompt(
     systemPrompt ? { role: 'system', content: systemPrompt } : null,
     tokenizerUserContent ? { role: 'user', content: tokenizerUserContent } : null,
   ].filter(Boolean) as Array<{ role: 'system' | 'user'; content: string }>;
-  const estimatedInputTokens = tokenizer(
+  let estimatedInputTokens = tokenizer(
     tokenizerMessages.length > 0
       ? tokenizerMessages
       : [{ role: 'user', content: '' }],
     TOKENIZER_OPTIONS,
   );
   const tokenEstimateIncludesInlineFiles = inlineFileCount > 0 && Boolean(inlineBlock);
+  if (!tokenEstimateIncludesInlineFiles && sections.length > 0) {
+    const attachmentText =
+      bundleText ??
+      sections
+        .map((section) => `### File: ${section.displayPath}\n${section.content.trimEnd()}`)
+        .join('\n\n');
+    const attachmentTokens = tokenizer(
+      [{ role: 'user', content: attachmentText }],
+      TOKENIZER_OPTIONS,
+    );
+    estimatedInputTokens += attachmentTokens;
+  }
   return {
     markdown,
     composerText,

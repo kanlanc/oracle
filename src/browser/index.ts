@@ -471,14 +471,11 @@ export function formatThinkingLog(startedAt: number, now: number, message: strin
   const elapsedMs = now - startedAt;
   const elapsedText = formatElapsed(elapsedMs);
   const progress = Math.min(1, elapsedMs / 600_000); // soft target: 10 minutes
-  const barSegments = 10;
-  const filled = Math.round(progress * barSegments);
-  const bar = `${'█'.repeat(filled).padEnd(barSegments, '░')}`;
   const pct = Math.round(progress * 100)
     .toString()
     .padStart(3, ' ');
   const statusLabel = message ? ` — ${message}` : '';
-  return `${bar} ${pct}% [${elapsedText} / ~10m]${statusLabel}${locatorSuffix}`;
+  return `${pct}% [${elapsedText} / ~10m]${statusLabel}${locatorSuffix}`;
 }
 
 function startThinkingStatusMonitor(

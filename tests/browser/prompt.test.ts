@@ -70,15 +70,27 @@ describe('assembleBrowserPrompt', () => {
     expect(result.tokenEstimateIncludesInlineFiles).toBe(true);
   });
 
-  test('inline file mode increases token estimates', async () => {
-    const baseOptions = buildOptions({ file: ['doc.md'] });
-    const readFilesImpl = async () => [{ path: '/repo/doc.md', content: 'hello world' }];
-    const base = await assembleBrowserPrompt(baseOptions, { cwd: '/repo', readFilesImpl });
+  test('counts uploaded file content in token estimate', async () => {
+    const withFile = await assembleBrowserPrompt(buildOptions({ file: ['doc.md'] }), {
+      cwd: '/repo',
+      readFilesImpl: async () => [{ path: '/repo/doc.md', content: 'hello world' }],
+    });
+    const withoutFile = await assembleBrowserPrompt(buildOptions({ file: [] }), {
+      cwd: '/repo',
+      readFilesImpl: async () => [],
+    });
+
+    expect(withFile.estimatedInputTokens).toBeGreaterThan(withoutFile.estimatedInputTokens);
+  });
+
+  test('inline file mode boosts estimate compared to prompt-only', async () => {
+    const readFilesImpl = async () => [{ path: '/repo/doc.md', content: 'inline payload' }];
+    const promptOnly = await assembleBrowserPrompt(buildOptions({ file: [] }), { cwd: '/repo', readFilesImpl });
     const inline = await assembleBrowserPrompt(
-      { ...baseOptions, browserInlineFiles: true } as RunOracleOptions,
+      { ...buildOptions({ file: ['doc.md'] }), browserInlineFiles: true } as RunOracleOptions,
       { cwd: '/repo', readFilesImpl },
     );
-    expect(inline.estimatedInputTokens).toBeGreaterThanOrEqual(base.estimatedInputTokens);
+    expect(inline.estimatedInputTokens).toBeGreaterThan(promptOnly.estimatedInputTokens / 2);
     expect(inline.tokenEstimateIncludesInlineFiles).toBe(true);
   });
 

@@ -123,7 +123,8 @@ export async function uploadAttachmentViaDataTransfer(
 
   // Give ChatGPT a moment to process the file
   await delay(500);
-    logger('Attachment queued');
+
+  logger('Attachment queued');
 }
 
 
