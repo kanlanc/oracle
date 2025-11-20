@@ -41,7 +41,7 @@ export async function ensureLoggedIn(
     returnByValue: true,
   });
   const probe = normalizeLoginProbe(outcome.result?.value);
-  if (probe.ok && probe.status > 0 && probe.status < 400) {
+  if (probe.ok && probe.status > 0 && probe.status < 400 && !probe.domLoginCta && !probe.onAuthPage) {
     const urlLabel = probe.url ?? '/backend-api/me';
     logger(`Login check passed (HTTP ${probe.status} from ${urlLabel})`);
     return;
@@ -49,13 +49,14 @@ export async function ensureLoggedIn(
 
   const statusLabel = probe.status ? ` (HTTP ${probe.status})` : '';
   const errorLabel = probe.error ? ` (${probe.error})` : '';
+  const domLabel = probe.domLoginCta ? ' Login UI detected on page.' : '';
   const cookieHint = options.remoteSession
     ? 'The remote Chrome session is not signed into ChatGPT. Sign in there, then rerun.'
     : (options.appliedCookies ?? 0) === 0
       ? 'No ChatGPT cookies were applied; sign in to chatgpt.com in Chrome or pass inline cookies (--browser-inline-cookies[(-file)] / ORACLE_BROWSER_COOKIES_JSON).'
       : 'ChatGPT login appears missing; open chatgpt.com in Chrome to refresh the session or provide inline cookies (--browser-inline-cookies[(-file)] / ORACLE_BROWSER_COOKIES_JSON).';
 
-  throw new Error(`ChatGPT session not detected${statusLabel}. ${cookieHint}${errorLabel}`);
+  throw new Error(`ChatGPT session not detected${statusLabel}. ${cookieHint}${domLabel}${errorLabel}`);
 }
 
 export async function ensurePromptReady(Runtime: ChromeClient['Runtime'], timeoutMs: number, logger: BrowserLogger) {
@@ -128,6 +129,8 @@ type LoginProbeResult = {
   redirected?: boolean;
   error?: string | null;
   pageUrl?: string | null;
+  domLoginCta?: boolean;
+  onAuthPage?: boolean;
 };
 
 function buildLoginProbeExpression(timeoutMs: number): string {
@@ -136,6 +139,47 @@ function buildLoginProbeExpression(timeoutMs: number): string {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort('timeout'), ${timeoutMs});
     const pageUrl = typeof location === 'object' && location?.href ? location.href : null;
+    const onAuthPage =
+      typeof location === 'object' &&
+      typeof location.pathname === 'string' &&
+      /^\\/(auth|login|signin)/i.test(location.pathname);
+
+    const hasLoginCta = () => {
+      const candidates = Array.from(
+        document.querySelectorAll(
+          [
+            'a[href*="/auth/login"]',
+            'a[href*="/auth/signin"]',
+            'button[type="submit"]',
+            'button[data-testid*="login"]',
+            'button[data-testid*="log-in"]',
+            'button[data-testid*="sign-in"]',
+            'button[data-testid*="signin"]',
+            'button',
+            'a',
+          ].join(','),
+        ),
+      );
+      const textMatches = (text) => {
+        if (!text) return false;
+        const normalized = text.toLowerCase().trim();
+        return ['log in', 'login', 'sign in', 'signin', 'continue with'].some((needle) =>
+          normalized.startsWith(needle),
+        );
+      };
+      for (const node of candidates) {
+        if (!(node instanceof HTMLElement)) continue;
+        const label =
+          node.textContent?.trim() ||
+          node.getAttribute('aria-label') ||
+          node.getAttribute('title') ||
+          '';
+        if (textMatches(label)) {
+          return true;
+        }
+      }
+      return false;
+    };
 
     const probeEndpoint = async (endpoint) => {
       try {
@@ -146,10 +190,12 @@ function buildLoginProbeExpression(timeoutMs: number): string {
           redirected: response.redirected,
           url: response.url || endpoint,
           pageUrl,
+          domLoginCta: hasLoginCta(),
+          onAuthPage,
         };
       } catch (error) {
         const message = error?.message ?? String(error);
-        return { ok: false, status: 0, error: message, url: endpoint, pageUrl };
+        return { ok: false, status: 0, error: message, url: endpoint, pageUrl, domLoginCta: hasLoginCta(), onAuthPage };
       }
     };
 
@@ -191,5 +237,7 @@ function normalizeLoginProbe(raw: unknown): LoginProbeResult {
     redirected: Boolean(value.redirected),
     error: typeof value.error === 'string' ? value.error : null,
     pageUrl: typeof value.pageUrl === 'string' ? value.pageUrl : null,
+    domLoginCta: Boolean(value.domLoginCta),
+    onAuthPage: Boolean(value.onAuthPage),
   };
 }

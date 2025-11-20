@@ -113,7 +113,9 @@ describe('ensureLoggedIn', () => {
 
   test('throws with cookie guidance when cookies missing', async () => {
     const runtime = {
-      evaluate: vi.fn().mockResolvedValue({ result: { value: { ok: false, status: 401, url: '/backend-api/me' } } }),
+      evaluate: vi.fn().mockResolvedValue({
+        result: { value: { ok: false, status: 401, url: '/backend-api/me', domLoginCta: true, onAuthPage: true } },
+      }),
     } as unknown as ChromeClient['Runtime'];
     await expect(ensureLoggedIn(runtime, logger, { appliedCookies: 0 })).rejects.toThrow(/inline cookies/i);
   });
