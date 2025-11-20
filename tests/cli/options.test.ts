@@ -10,6 +10,7 @@ import {
   inferModelFromLabel,
   normalizeModelOption,
   parseHeartbeatOption,
+  mergePathLikeOptions,
 } from '../../src/cli/options.ts';
 
 describe('collectPaths', () => {
@@ -20,6 +21,46 @@ describe('collectPaths', () => {
 
   test('returns previous list when value is undefined', () => {
     expect(collectPaths(undefined, ['keep'])).toEqual(['keep']);
+  });
+});
+
+describe('mergePathLikeOptions', () => {
+  test('merges aliases in the documented order and splits commas', () => {
+    const result = mergePathLikeOptions(
+      ['a', 'b,c'],
+      ['d'],
+      ['e,f'],
+      ['g'],
+      ['h,i'],
+    );
+    expect(result).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']);
+  });
+
+  test('returns empty array when everything is undefined', () => {
+    expect(mergePathLikeOptions(undefined, undefined, undefined, undefined, undefined)).toEqual([]);
+  });
+
+  test('trims entries and preserves exclusions/ordering across aliases', () => {
+    const result = mergePathLikeOptions(
+      ['  src/**/*.ts , !src/**/*.test.ts  '],
+      [' docs/guide.md '],
+      [' assets/**/* '],
+      ['  README.md  ,  !dist/** '],
+      undefined,
+    );
+    expect(result).toEqual([
+      'src/**/*.ts',
+      '!src/**/*.test.ts',
+      'docs/guide.md',
+      'assets/**/*',
+      'README.md',
+      '!dist/**',
+    ]);
+  });
+
+  test('ignores empty strings inside alias arrays', () => {
+    const result = mergePathLikeOptions(['', 'src'], [''], [''], ['lib,'], [' ,tests']);
+    expect(result).toEqual(['src', 'lib', 'tests']);
   });
 });
 

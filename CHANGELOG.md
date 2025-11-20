@@ -96,6 +96,12 @@ All notable changes to this project will be documented in this file.
   ```
 - The MCP `consult` tool honors `~/.oracle/config.json` defaults (engine/model/search/prompt suffix/heartbeat/background/filesReport) unless the caller overrides them.
 
+## 1.1.1 — 2025-11-20
+
+### Added
+- Hidden `--files`, `--path`, and `--paths` aliases for `--file`, so all path inputs (including `--include`) merge cleanly; commas still split within a single flag.
+- CLI path-merging helper now has unit coverage for alias ordering and comma splitting.
+
 ## 1.1.0 — 2025-11-17
 
 Highlights

@@ -10,6 +10,23 @@ export function collectPaths(value: string | string[] | undefined, previous: str
   return previous.concat(nextValues.flatMap((entry) => entry.split(',')).map((entry) => entry.trim()).filter(Boolean));
 }
 
+/**
+ * Merge all path-like CLI inputs (file/include aliases) into a single list, preserving order.
+ */
+export function mergePathLikeOptions(
+  file?: string[],
+  include?: string[],
+  filesAlias?: string[],
+  pathAlias?: string[],
+  pathsAlias?: string[],
+): string[] {
+  const withFile = collectPaths(file, []);
+  const withInclude = collectPaths(include, withFile);
+  const withFilesAlias = collectPaths(filesAlias, withInclude);
+  const withPathAlias = collectPaths(pathAlias, withFilesAlias);
+  return collectPaths(pathsAlias, withPathAlias);
+}
+
 export function collectModelList(value: string, previous: string[] = []): string[] {
   if (!value) {
     return previous;

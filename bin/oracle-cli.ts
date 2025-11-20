@@ -29,6 +29,7 @@ import {
   inferModelFromLabel,
   parseHeartbeatOption,
   parseTimeoutOption,
+  mergePathLikeOptions,
 } from '../src/cli/options.js';
 import { shouldDetachSession } from '../src/cli/detach.js';
 import { applyHiddenAliases } from '../src/cli/hiddenAliases.js';
@@ -57,6 +58,9 @@ interface CliOptions extends OptionValues {
   message?: string;
   file?: string[];
   include?: string[];
+  files?: string[];
+  path?: string[];
+  paths?: string[];
   model: string;
   models?: string[];
   force?: boolean;
@@ -169,6 +173,24 @@ program
   )
   .addOption(
     new Option('--include <paths...>', 'Alias for --file.')
+      .argParser(collectPaths)
+      .default([])
+      .hideHelp(),
+  )
+  .addOption(
+    new Option('--files <paths...>', 'Alias for --file.')
+      .argParser(collectPaths)
+      .default([])
+      .hideHelp(),
+  )
+  .addOption(
+    new Option('--path <paths...>', 'Alias for --file.')
+      .argParser(collectPaths)
+      .default([])
+      .hideHelp(),
+  )
+  .addOption(
+    new Option('--paths <paths...>', 'Alias for --file.')
       .argParser(collectPaths)
       .default([])
       .hideHelp(),
@@ -532,6 +554,16 @@ async function runRootCommand(options: CliOptions): Promise<void> {
     return;
   }
   const previewMode = resolvePreviewMode(options.dryRun || options.preview);
+  const mergedFileInputs = mergePathLikeOptions(
+    options.file,
+    options.include,
+    options.files,
+    options.path,
+    options.paths,
+  );
+  if (mergedFileInputs.length > 0) {
+    options.file = mergedFileInputs;
+  }
 
   const applyRetentionOption = (): void => {
     if (optionUsesDefault('retainHours') && typeof userConfig.sessionRetentionHours === 'number') {
