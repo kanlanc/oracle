@@ -3,13 +3,13 @@ import { pickTagline, formatIntroLine, TAGLINES } from '../../src/cli/tagline.ts
 
 describe('taglines', () => {
   test('respects env override for deterministic index', () => {
-    const tagline = pickTagline({ env: { ['ORACLE_TAGLINE_INDEX']: '3' } as NodeJS.ProcessEnv });
+    const tagline = pickTagline({ env: { ORACLE_TAGLINE_INDEX: '3' } as Record<string, string> });
     expect(tagline).toBe(TAGLINES[3]);
   });
 
   test('wraps index modulo tagline length', () => {
     const tagline = pickTagline({
-      env: { ['ORACLE_TAGLINE_INDEX']: String(TAGLINES.length + 2) } as NodeJS.ProcessEnv,
+      env: { ORACLE_TAGLINE_INDEX: String(TAGLINES.length + 2) } as Record<string, string>,
     });
     expect(tagline).toBe(TAGLINES[2]);
   });
@@ -20,7 +20,7 @@ describe('taglines', () => {
   });
 
   test('formats intro line with version', () => {
-    const intro = formatIntroLine('1.2.3', { env: { ['ORACLE_TAGLINE_INDEX']: '0' } as NodeJS.ProcessEnv });
+    const intro = formatIntroLine('1.2.3', { env: { ORACLE_TAGLINE_INDEX: '0' } as Record<string, string> });
     expect(intro.startsWith('🧿 oracle v1.2.3 — ')).toBe(true);
     expect(intro).toContain(TAGLINES[0]);
   });
