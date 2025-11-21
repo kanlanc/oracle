@@ -42,6 +42,28 @@ interface MultiModelRunDependencies {
   now?: () => number;
 }
 
+const OSC_PROGRESS_PREFIX = '\u001b]9;4;';
+const OSC_PROGRESS_END = '\u001b\\';
+
+function forwardOscProgress(chunk: string, shouldForward: boolean): void {
+  if (!shouldForward || !chunk.includes(OSC_PROGRESS_PREFIX)) {
+    return;
+  }
+  let searchFrom = 0;
+  while (searchFrom < chunk.length) {
+    const start = chunk.indexOf(OSC_PROGRESS_PREFIX, searchFrom);
+    if (start === -1) {
+      break;
+    }
+    const end = chunk.indexOf(OSC_PROGRESS_END, start + OSC_PROGRESS_PREFIX.length);
+    if (end === -1) {
+      break;
+    }
+    process.stdout.write(chunk.slice(start, end + OSC_PROGRESS_END.length));
+    searchFrom = end + OSC_PROGRESS_END.length;
+  }
+}
+
 const defaultDeps: MultiModelRunDependencies = {
   store: sessionStore,
   runOracleImpl: runOracle,
@@ -127,8 +149,10 @@ function startModelExecution({
   const perModelLog = (message?: string): void => {
     logWriter.logLine(message ?? '');
   };
+  const mirrorOscProgress = process.stdout.isTTY === true;
   const perModelWrite = (chunk: string): boolean => {
     logWriter.writeChunk(chunk);
+    forwardOscProgress(chunk, mirrorOscProgress);
     return true;
   };
 

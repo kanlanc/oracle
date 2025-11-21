@@ -200,4 +200,168 @@ describe('runMultiModelApiSession', () => {
 
     expect(order).toEqual(['gemini-3-pro', 'gpt-5.1']);
   });
+
+  test('forwards OSC progress updates to stdout during multi-model runs', async () => {
+    const sessionMeta: SessionMetadata = {
+      id: 'sess-osc',
+      createdAt: new Date().toISOString(),
+      status: 'pending',
+      model: 'gpt-5.1-pro',
+      options: {},
+    };
+
+    const models: ModelName[] = ['gpt-5.1-pro'];
+    let modelLogPath = '';
+
+    const store: SessionStore = {
+      ensureStorage: async () => {},
+      createSession: async () => sessionMeta,
+      readSession: async () => sessionMeta,
+      updateSession: async () => sessionMeta,
+      createLogWriter: (sessionId: string, model?: string) => {
+        modelLogPath = path.join(tmpRoot, sessionId, 'models', `${model ?? 'session'}.log`);
+        fs.mkdirSync(path.dirname(modelLogPath), { recursive: true });
+        fs.writeFileSync(modelLogPath, '');
+        return {
+          logPath: modelLogPath,
+          stream: { end: vi.fn() } as unknown as fs.WriteStream,
+          logLine: (line = '') => fs.appendFileSync(modelLogPath, `${line}\n`),
+          writeChunk: (chunk: string) => {
+            fs.appendFileSync(modelLogPath, chunk);
+            return true;
+          },
+        };
+      },
+      updateModelRun: async (_sessionId: string, model: string, updates: Partial<SessionModelRun>) =>
+        Promise.resolve({ model, status: updates.status ?? 'running' } as SessionModelRun),
+      readLog: async () => '',
+      readModelLog: async () => '',
+      readRequest: async () => null,
+      listSessions: async () => [],
+      filterSessions: (metas) => ({ entries: metas, truncated: false, total: metas.length }),
+      deleteOlderThan: async () => ({ deleted: 0, remaining: 0 }),
+      getPaths: async (sessionId: string) => ({
+        dir: path.join(tmpRoot, sessionId),
+        metadata: '',
+        log: '',
+        request: '',
+      }),
+      sessionsDir: () => tmpRoot,
+    };
+
+    const oscSequence = '\u001b]9;4;3;;Waiting for API\u001b\\';
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockReturnValue(true as unknown as boolean);
+    const originalTty = (process.stdout as { isTTY?: boolean }).isTTY;
+    (process.stdout as { isTTY?: boolean }).isTTY = true;
+
+    const runOracleImpl = vi.fn(async (options: RunOracleOptions, deps: { write?: (chunk: string) => boolean }) => {
+      deps.write?.(oscSequence);
+      return successResult(options.model as ModelName);
+    });
+
+    await runMultiModelApiSession(
+      {
+        sessionMeta,
+        runOptions: { prompt: 'Cross-check this design', model: 'gpt-5.1-pro', search: false },
+        models,
+        cwd: process.cwd(),
+        version: 'test',
+      },
+      { store, runOracleImpl },
+    );
+
+    expect(writeSpy).toHaveBeenCalledWith(oscSequence);
+    const logBody = fs.readFileSync(modelLogPath, 'utf8');
+    expect(logBody).toContain(oscSequence);
+
+    writeSpy.mockRestore();
+    if (originalTty === undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete (process.stdout as { isTTY?: boolean }).isTTY;
+    } else {
+      (process.stdout as { isTTY?: boolean }).isTTY = originalTty;
+    }
+  });
+
+  test('does not forward OSC progress when stdout is not a TTY', async () => {
+    const sessionMeta: SessionMetadata = {
+      id: 'sess-osc-notty',
+      createdAt: new Date().toISOString(),
+      status: 'pending',
+      model: 'gpt-5.1-pro',
+      options: {},
+    };
+
+    const models: ModelName[] = ['gpt-5.1-pro'];
+    let modelLogPath = '';
+
+    const store: SessionStore = {
+      ensureStorage: async () => {},
+      createSession: async () => sessionMeta,
+      readSession: async () => sessionMeta,
+      updateSession: async () => sessionMeta,
+      createLogWriter: (sessionId: string, model?: string) => {
+        modelLogPath = path.join(tmpRoot, sessionId, 'models', `${model ?? 'session'}.log`);
+        fs.mkdirSync(path.dirname(modelLogPath), { recursive: true });
+        fs.writeFileSync(modelLogPath, '');
+        return {
+          logPath: modelLogPath,
+          stream: { end: vi.fn() } as unknown as fs.WriteStream,
+          logLine: (line = '') => fs.appendFileSync(modelLogPath, `${line}\n`),
+          writeChunk: (chunk: string) => {
+            fs.appendFileSync(modelLogPath, chunk);
+            return true;
+          },
+        };
+      },
+      updateModelRun: async (_sessionId: string, model: string, updates: Partial<SessionModelRun>) =>
+        Promise.resolve({ model, status: updates.status ?? 'running' } as SessionModelRun),
+      readLog: async () => '',
+      readModelLog: async () => '',
+      readRequest: async () => null,
+      listSessions: async () => [],
+      filterSessions: (metas) => ({ entries: metas, truncated: false, total: metas.length }),
+      deleteOlderThan: async () => ({ deleted: 0, remaining: 0 }),
+      getPaths: async (sessionId: string) => ({
+        dir: path.join(tmpRoot, sessionId),
+        metadata: '',
+        log: '',
+        request: '',
+      }),
+      sessionsDir: () => tmpRoot,
+    };
+
+    const oscSequence = '\u001b]9;4;3;;Waiting for API\u001b\\';
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockReturnValue(true as unknown as boolean);
+    const originalTty = (process.stdout as { isTTY?: boolean }).isTTY;
+    (process.stdout as { isTTY?: boolean }).isTTY = false;
+
+    const runOracleImpl = vi.fn(async (options: RunOracleOptions, deps: { write?: (chunk: string) => boolean }) => {
+      deps.write?.(oscSequence);
+      return successResult(options.model as ModelName);
+    });
+
+    await runMultiModelApiSession(
+      {
+        sessionMeta,
+        runOptions: { prompt: 'Cross-check this design', model: 'gpt-5.1-pro', search: false },
+        models,
+        cwd: process.cwd(),
+        version: 'test',
+      },
+      { store, runOracleImpl },
+    );
+
+    expect(writeSpy).not.toHaveBeenCalledWith(oscSequence);
+    const logBody = fs.readFileSync(modelLogPath, 'utf8');
+    expect(logBody).toContain(oscSequence);
+
+    writeSpy.mockRestore();
+    if (originalTty === undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete (process.stdout as { isTTY?: boolean }).isTTY;
+    } else {
+      (process.stdout as { isTTY?: boolean }).isTTY = originalTty;
+    }
+  });
 });
