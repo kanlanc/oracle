@@ -15,8 +15,10 @@ Oracle bundles your prompt and files so another AI can answer with real context.
 
 ## Quick start
 
+Install prefix all via `npx -y @steipete/oracle`
+
 ```bash
-# Copy the bundle and paste into ChatGPT (pnpm runner, no dry run)
+# Copy the bundle and paste into ChatGPT
 pnpm oracle --render --copy -p "Review the TS data layer for schema drift" --file "src/**/*.ts,*/*.test.ts"
 
 # Minimal API run (expects OPENAI_API_KEY in your env)
@@ -29,7 +31,7 @@ oracle -p "Cross-check the data layer assumptions" --models gpt-5.1-pro,gemini-3
 oracle status --hours 72
 oracle session <id> --render
 
-# TUI (interactive, experimental)
+# TUI (interactive, only for humans)
 oracle
 ```
 
