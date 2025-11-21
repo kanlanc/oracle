@@ -2,14 +2,11 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import crypto from 'node:crypto';
-import sqlite3 from 'sqlite3';
 import chromeCookies from 'chrome-cookies-secure';
-// @ts-expect-error no types published
-import dpapi from 'win-dpapi';
 import { COOKIE_URLS } from './constants.js';
 import type { CookieParam } from './types.js';
 import './keytarShim.js';
+import { loadWindowsCookies, materializeCookieFile } from './windowsCookies.js';
 
 type KeychainLabel = { service: string; account: string };
 type KeytarLike = { getPassword: (service: string, account: string) => Promise<string | null> };
@@ -246,32 +243,6 @@ function expandPath(input: string): string {
 
 function looksLikePath(value: string): boolean {
   return value.includes('/') || value.includes('\\');
-}
-
-async function materializeCookieFile(sourcePath: string): Promise<string> {
-  if (process.platform !== 'win32') return sourcePath;
-  // Chrome can keep the Cookies DB locked; copy to a temp file so sqlite can open it reliably.
-  const resolved = await resolveDirectoryCandidate(sourcePath);
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'oracle-cookies-'));
-  const tempPath = path.join(tempDir, 'Cookies');
-  try {
-    await fs.copyFile(resolved, tempPath);
-    // chrome-cookies-secure will append "Cookies" when given a directory; returning the file avoids double-appending.
-    return tempPath;
-  } catch (error) {
-    // Fall back to the original path if the copy fails; upstream error handling will surface issues.
-    return resolved;
-  }
-}
-
-async function resolveDirectoryCandidate(inputPath: string): Promise<string> {
-  const stat = await fs.stat(inputPath).catch(() => null);
-  if (!stat?.isDirectory()) return inputPath;
-  const network = path.join(inputPath, 'Network', 'Cookies');
-  const direct = path.join(inputPath, 'Cookies');
-  if (await fileExists(network)) return network;
-  if (await fileExists(direct)) return direct;
-  return inputPath;
 }
 
 async function loadWindowsCookies(dbPath: string, filterNames?: Set<string>): Promise<CookieParam[]> {
