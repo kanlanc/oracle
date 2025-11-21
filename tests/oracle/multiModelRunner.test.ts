@@ -7,7 +7,7 @@ import os from 'node:os';
 import { runMultiModelApiSession } from '../../src/oracle/multiModelRunner.js';
 import { OracleResponseError, type ModelName, type RunOracleOptions, type RunOracleResult } from '../../src/oracle.js';
 import type { SessionStore } from '../../src/sessionStore.js';
-import type { SessionMetadata } from '../../src/sessionManager.js';
+import type { SessionMetadata, SessionModelRun } from '../../src/sessionManager.js';
 
 const successResult = (model: ModelName): RunOracleResult => ({
   mode: 'live',
@@ -149,7 +149,8 @@ describe('runMultiModelApiSession', () => {
           },
         };
       },
-      updateModelRun: async () => {},
+      updateModelRun: async (_sessionId: string, model: string, updates: Partial<SessionModelRun>) =>
+        Promise.resolve({ model, status: updates.status ?? 'running' } as SessionModelRun),
       readLog: async () => '',
       readModelLog: async () => '',
       readRequest: async () => null,

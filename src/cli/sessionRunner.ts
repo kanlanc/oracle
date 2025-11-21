@@ -20,7 +20,7 @@ import {
 } from './notifier.js';
 import { sessionStore } from '../sessionStore.js';
 import { runMultiModelApiSession } from '../oracle/multiModelRunner.js';
-import { MODEL_CONFIGS } from '../oracle/config.js';
+import { MODEL_CONFIGS, DEFAULT_SYSTEM_PROMPT } from '../oracle/config.js';
 import { buildPrompt, buildRequestBody } from '../oracle/request.js';
 import { estimateRequestTokens } from '../oracle/tokenEstimate.js';
 import { formatTokenEstimate, formatTokenValue } from '../oracle/runUtils.js';
@@ -120,8 +120,11 @@ export async function performSessionRun({
     }
     const multiModels = Array.isArray(runOptions.models) ? runOptions.models.filter(Boolean) : [];
     if (multiModels.length > 1) {
-      const primaryModel = multiModels[0] ?? runOptions.model;
-      const modelConfig = primaryModel ? MODEL_CONFIGS[primaryModel] : undefined;
+      const [primaryModel] = multiModels;
+      if (!primaryModel) {
+        throw new Error('Missing model name for multi-model run.');
+      }
+      const modelConfig = MODEL_CONFIGS[primaryModel];
       if (!modelConfig) {
         throw new Error(`Unsupported model "${primaryModel}".`);
       }
@@ -129,7 +132,7 @@ export async function performSessionRun({
       const promptWithFiles = buildPrompt(runOptions.prompt, files, cwd);
       const requestBody = buildRequestBody({
         modelConfig,
-        systemPrompt: runOptions.system,
+        systemPrompt: runOptions.system ?? DEFAULT_SYSTEM_PROMPT,
         userPrompt: promptWithFiles,
         searchEnabled: runOptions.search !== false,
         maxOutputTokens: runOptions.maxOutput,

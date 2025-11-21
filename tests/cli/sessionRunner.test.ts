@@ -40,10 +40,15 @@ vi.mock('../../src/sessionStore.ts', () => ({
   sessionStore: sessionStoreMock,
 }));
 
-import type { SessionMetadata } from '../../src/sessionManager.ts';
+import type { SessionMetadata, SessionModelRun } from '../../src/sessionManager.ts';
+import type { ModelName } from '../../src/oracle.ts';
 import { performSessionRun } from '../../src/cli/sessionRunner.ts';
 import { BrowserAutomationError, FileValidationError, OracleResponseError, OracleTransportError, runOracle } from '../../src/oracle.ts';
-import { runMultiModelApiSession } from '../../src/oracle/multiModelRunner.ts';
+import {
+  runMultiModelApiSession,
+  type ModelExecutionResult,
+  type MultiModelRunSummary,
+} from '../../src/oracle/multiModelRunner.ts';
 import type { OracleResponse, RunOracleResult } from '../../src/oracle.ts';
 import { runBrowserSessionExecution } from '../../src/browser/sessionRunner.ts';
 import { sendSessionNotification } from '../../src/cli/notifier.ts';
@@ -136,8 +141,8 @@ describe('performSessionRun', () => {
     const sessionMeta = {
       ...baseSessionMeta,
       models: [
-        { model: 'gpt-5.1', status: 'running' },
-        { model: 'gemini-3-pro', status: 'running' },
+        { model: 'gpt-5.1', status: 'running' } as SessionModelRun,
+        { model: 'gemini-3-pro', status: 'running' } as SessionModelRun,
       ],
     } as SessionMetadata;
 
@@ -150,15 +155,15 @@ describe('performSessionRun', () => {
     (process.stdout as { isTTY?: boolean }).isTTY = true;
 
     vi.mocked(runMultiModelApiSession).mockImplementation(async (params) => {
-      const fulfilled = [
+      const fulfilled: ModelExecutionResult[] = [
         {
-          model: 'gemini-3-pro',
+          model: 'gemini-3-pro' as ModelName,
           usage: { inputTokens: 1, outputTokens: 1, reasoningTokens: 0, totalTokens: 2, cost: 0 },
           answerText: 'gemini answer',
           logPath: 'log-gemini',
         },
         {
-          model: 'gpt-5.1',
+          model: 'gpt-5.1' as ModelName,
           usage: { inputTokens: 1, outputTokens: 1, reasoningTokens: 0, totalTokens: 2, cost: 0 },
           answerText: 'gpt answer',
           logPath: 'log-gpt',
@@ -166,15 +171,16 @@ describe('performSessionRun', () => {
       ];
 
       if (params.onModelDone) {
-        await params.onModelDone(fulfilled[0]!);
-        await params.onModelDone(fulfilled[1]!);
+        for (const entry of fulfilled) {
+          await params.onModelDone(entry);
+        }
       }
 
       return {
         fulfilled,
         rejected: [],
         elapsedMs: 1000,
-      };
+      } as MultiModelRunSummary;
     });
 
     await performSessionRun({
@@ -210,8 +216,8 @@ describe('performSessionRun', () => {
     const sessionMeta = {
       ...baseSessionMeta,
       models: [
-        { model: 'gpt-5.1', status: 'running' },
-        { model: 'gemini-3-pro', status: 'running' },
+        { model: 'gpt-5.1', status: 'running' } as SessionModelRun,
+        { model: 'gemini-3-pro', status: 'running' } as SessionModelRun,
       ],
     } as SessionMetadata;
 
@@ -221,30 +227,27 @@ describe('performSessionRun', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true as unknown as boolean);
     const originalTty = (process.stdout as { isTTY?: boolean }).isTTY;
-    (process.stdout as { isTTY?: boolean }).isTTY = true;
+    (process.stdout as { isTTY?: boolean }).isTTY = false;
 
-    vi.mocked(runMultiModelApiSession).mockImplementation(async (params) => {
-      const fulfilled = [
+    const summary: MultiModelRunSummary = {
+      fulfilled: [
         {
-          model: 'gpt-5.1',
+          model: 'gpt-5.1' as ModelName,
           usage: { inputTokens: 10, outputTokens: 20, reasoningTokens: 0, totalTokens: 30, cost: 0.01 },
           answerText: 'ans-gpt',
           logPath: 'log-gpt',
         },
         {
-          model: 'gemini-3-pro',
+          model: 'gemini-3-pro' as ModelName,
           usage: { inputTokens: 5, outputTokens: 5, reasoningTokens: 0, totalTokens: 10, cost: 0.02 },
           answerText: 'ans-gemini',
           logPath: 'log-gemini',
         },
-      ];
-      if (params.onModelDone) {
-        for (const entry of fulfilled) {
-          await params.onModelDone(entry);
-        }
-      }
-      return { fulfilled, rejected: [], elapsedMs: 1234 };
-    });
+      ],
+      rejected: [],
+      elapsedMs: 1234,
+    };
+    vi.mocked(runMultiModelApiSession).mockResolvedValue(summary);
 
     await performSessionRun({
       sessionMeta,
@@ -259,9 +262,7 @@ describe('performSessionRun', () => {
     const logsCombined = logSpy.mock.calls.map((c) => c[0]).join('\n');
     expect(logsCombined).toContain('Calling gpt-5.1, gemini-3-pro');
     expect((logsCombined.match(/Calling gpt-5.1/g) ?? []).length).toBe(1);
-    const stripped = logsCombined.replace(/\u001b\[[0-9;]*m/g, '');
-    expect(stripped).toContain('Finished in');
-    expect(stripped).toContain('2/2 models');
+    expect(logsCombined).toMatch(/Finished in .*2\/2 models/);
 
     writeSpy.mockRestore();
     logSpy.mockRestore();
@@ -288,23 +289,21 @@ describe('performSessionRun', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true as unknown as boolean);
     const originalTty = (process.stdout as { isTTY?: boolean }).isTTY;
-    (process.stdout as { isTTY?: boolean }).isTTY = true;
+    (process.stdout as { isTTY?: boolean }).isTTY = false;
 
-    vi.mocked(runMultiModelApiSession).mockImplementation(async (params) => {
-      const fulfilled = [
+    const summary: MultiModelRunSummary = {
+      fulfilled: [
         {
-          model: 'gpt-5.1',
+          model: 'gpt-5.1' as ModelName,
           usage: { inputTokens: 1, outputTokens: 1, reasoningTokens: 0, totalTokens: 2, cost: 0 },
           answerText: 'ok',
           logPath: 'log-ok',
         },
-      ];
-      const rejected = [{ model: 'gemini-3-pro', reason: new Error('boom') }];
-      if (params.onModelDone) {
-        await params.onModelDone(fulfilled[0]!);
-      }
-      return { fulfilled, rejected, elapsedMs: 500 };
-    });
+      ],
+      rejected: [{ model: 'gemini-3-pro' as ModelName, reason: new Error('boom') }],
+      elapsedMs: 500,
+    };
+    vi.mocked(runMultiModelApiSession).mockResolvedValue(summary);
 
     await expect(
       performSessionRun({
