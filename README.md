@@ -15,24 +15,24 @@ Oracle bundles your prompt and files so another AI can answer with real context.
 
 ## Quick start
 
-Install prefix all via `npx -y @steipete/oracle`
+Install globally: `npm install -g @steipete/oracle`
 
 ```bash
 # Copy the bundle and paste into ChatGPT
-pnpm oracle --render --copy -p "Review the TS data layer for schema drift" --file "src/**/*.ts,*/*.test.ts"
+npx -y @steipete/oracle --render --copy -p "Review the TS data layer for schema drift" --file "src/**/*.ts,*/*.test.ts"
 
 # Minimal API run (expects OPENAI_API_KEY in your env)
-oracle -p "Write a concise architecture note for the storage adapters" --file src/storage/README.md
+npx -y @steipete/oracle -p "Write a concise architecture note for the storage adapters" --file src/storage/README.md
 
 # Multi-model API run
-oracle -p "Cross-check the data layer assumptions" --models gpt-5.1-pro,gemini-3-pro --file "src/**/*.ts"
+npx -y @steipete/oracle -p "Cross-check the data layer assumptions" --models gpt-5.1-pro,gemini-3-pro --file "src/**/*.ts"
 
 # Sessions (list and replay)
-oracle status --hours 72
-oracle session <id> --render
+npx -y @steipete/oracle status --hours 72
+npx -y @steipete/oracle session <id> --render
 
 # TUI (interactive, only for humans)
-oracle
+npx -y @steipete/oracle
 ```
 
 ## Integration
