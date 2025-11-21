@@ -6,7 +6,7 @@ import {
   runOracle,
   type ClientLike,
   type OracleResponse,
-} from '../../src/oracle.ts';
+} from '../../../src/oracle.ts';
 import { MockBackgroundClient, MockClient, MockStream, buildResponse } from './helpers.ts';
 
 describe('timeouts', () => {

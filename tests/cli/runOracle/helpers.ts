@@ -9,8 +9,8 @@ import type {
   OracleResponse,
   ResponseStreamEvent,
   ResponseStreamLike,
-} from '../../src/oracle.ts';
-import { OracleTransportError } from '../../src/oracle.ts';
+} from '../../../src/oracle.ts';
+import { OracleTransportError } from '../../../src/oracle.ts';
 
 export type TempFile = { dir: string; filePath: string };
 

@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { runOracle, type ClientLike } from '../../src/oracle.ts';
+import { runOracle } from '../../../src/oracle.ts';
 import { createMockFs, MockBackgroundClient, MockClient, MockStream, buildResponse } from './helpers.ts';
 
 const testNonWindows = process.platform === 'win32' ? test.skip : test;
@@ -44,7 +44,7 @@ describe('runOracle streaming output', () => {
 
     expect(result.mode).toBe('live');
     expect(writes.join('')).toBe('Hello world\n\n');
-    expect(logs.some((line) => line.includes('oracle ('))).toBe(true);
+    expect(logs.some((line) => line.includes('Calling '))).toBe(true);
     expect(logs.some((line) => line.startsWith('Finished in '))).toBe(true);
   });
 
@@ -75,7 +75,7 @@ describe('runOracle streaming output', () => {
     );
 
     expect(writes).toEqual([]);
-    expect(logs.some((line) => line.includes('oracle ('))).toBe(true);
+    expect(logs.some((line) => line.includes('Calling '))).toBe(true);
     const finishedLine = logs.find((line) => line.startsWith('Finished in '));
     expect(finishedLine).toBeDefined();
   });
@@ -221,7 +221,7 @@ describe('runOracle file reports', () => {
         log: (msg: string) => logs.push(msg),
       },
     );
-    expect(logs.some((line) => line.includes('oracle ('))).toBe(true);
+    expect(logs.some((line) => line.includes('Calling '))).toBe(true);
     const fileUsageIndex = logs.indexOf('File Token Usage');
     expect(fileUsageIndex).toBeGreaterThan(-1);
     const fileLines = logs.slice(fileUsageIndex + 1, fileUsageIndex + 3);
@@ -256,7 +256,7 @@ describe('runOracle file reports', () => {
         },
       ),
     ).rejects.toThrow('Input too large');
-    expect(logs.some((line) => line.includes('oracle ('))).toBe(true);
+    expect(logs.some((line) => line.includes('Calling '))).toBe(true);
     expect(logs.find((line) => line === 'File Token Usage')).toBeDefined();
   });
 
@@ -287,7 +287,7 @@ describe('runOracle file reports', () => {
       },
     );
 
-    expect(logs.some((line) => line.includes('oracle ('))).toBe(true);
+    expect(logs.some((line) => line.includes('Calling '))).toBe(true);
     const listed = logs.some((line) => line.includes('note.txt'));
     expect(listed).toBe(true);
 

@@ -16,9 +16,9 @@ import {
   formatElapsed,
   getFileTokenStats,
   printFileTokenStats,
-} from '../../src/oracle.ts';
-import { collectPaths, parseIntOption } from '../../src/cli/options.ts';
-import { createMockFs, createTempFile } from './helpers.ts';
+} from '../../../src/oracle.ts';
+import { collectPaths, parseIntOption } from '../../../src/cli/options.ts';
+import { createTempFile } from './helpers.ts';
 
 const testNonWindows = process.platform === 'win32' ? test.skip : test;
 
@@ -69,7 +69,7 @@ describe('renderPromptMarkdown', () => {
         },
         { cwd },
       );
-      const { warnIfOversizeBundle } = await import('../../src/cli/bundleWarnings.js');
+      const { warnIfOversizeBundle } = await import('../../../src/cli/bundleWarnings.js');
       const warned = warnIfOversizeBundle(200_000, 196_000, (msg: string) => logs.push(msg));
       expect(warned).toBe(true);
       expect(logs.join('\n')).toMatch(/Warning: bundle is ~200,000 tokens/);

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { runOracle, type ClientLike, type OracleResponse } from '../../src/oracle.ts';
+import { runOracle, type ClientLike, type OracleResponse } from '../../../src/oracle.ts';
 import { MockClient, MockStream, buildResponse } from './helpers.ts';
 
 describe('runOracle no-file tip', () => {
