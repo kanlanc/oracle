@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Per-model search tool selection so Grok can use `web_search` while OpenAI models keep `web_search_preview`.
 - Multi-model coverage now includes Grok in orchestrator tests.
 - Grok “thinking”/non-fast variant is not available via API yet; Oracle aliases `grok` to the fast reasoning model to match what xAI ships today.
+- PTY-driven CLI/TUI harness landed for e2e coverage (browser guard, TUI exit path); PTY suites are opt-in via `ORACLE_ENABLE_PTY_TESTS=1` and stub tokenizers to stay lightweight.
 
 ### Fixed
 - MCP (global installs): keep the stdio transport alive until the client closes it so `oracle-mcp` doesn’t exit right after `connect()`; npm -g / host-spawned MCP clients now handshake successfully (tarball regression in 0.4.2).
