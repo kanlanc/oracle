@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 const TSX_BIN = path.join(process.cwd(), 'node_modules', 'tsx', 'dist', 'cli.mjs');
 const CLI_ENTRY = path.join(process.cwd(), 'bin', 'oracle-cli.ts');
 
-let ptyAvailable = true;
+let ptyAvailable = process.platform !== 'linux';
 // biome-ignore lint/suspicious/noExplicitAny: third-party module without types
 let pty: any | null = null;
 try {
@@ -21,7 +21,6 @@ try {
   ptyAvailable = false;
 }
 
-// biome-ignore lint/nursery/noUnnecessaryConditions: guarded PTY dependency can be absent in CI.
 const ptyDescribe = ptyAvailable ? describe : describe.skip;
 
 // biome-ignore lint/complexity/useRegexLiterals: constructor form avoids control-char lint noise.

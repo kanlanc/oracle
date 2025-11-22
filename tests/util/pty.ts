@@ -17,7 +17,7 @@ try {
   pty = null;
 }
 
-export const ptyAvailable = Boolean(pty);
+export const ptyAvailable = Boolean(pty) && process.platform !== 'linux';
 
 export type PtyStep = {
   /** Substring or regex that must appear in the accumulated output to trigger this step. */
