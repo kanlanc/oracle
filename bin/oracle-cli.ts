@@ -66,6 +66,7 @@ import {
   type NotificationSettings,
 } from '../src/cli/notifier.js';
 import { loadUserConfig, type UserConfig } from '../src/config.js';
+import { applyBrowserDefaultsFromConfig } from '../src/cli/browserDefaults.js';
 import { shouldBlockDuplicatePrompt } from '../src/cli/duplicatePromptGuard.js';
 
 interface CliOptions extends OptionValues {
@@ -936,7 +937,8 @@ async function runRootCommand(options: CliOptions): Promise<void> {
     await readFiles(options.file, { cwd: process.cwd() });
   }
 
-  applyBrowserDefaultsFromConfig(options, userConfig);
+  const getSource = (key: keyof CliOptions) => program.getOptionValueSource?.(key as string) ?? undefined;
+  applyBrowserDefaultsFromConfig(options, userConfig, getSource);
 
   const notifications = resolveNotificationSettings({
     cliNotify: options.notify,
@@ -1224,52 +1226,6 @@ function resolveWaitFlag({
   if (waitFlag === true) return true;
   if (noWaitFlag === true) return false;
   return defaultWaitPreference(model, engine);
-}
-
-function applyBrowserDefaultsFromConfig(options: CliOptions, config: UserConfig): void {
-  const browser = config.browser;
-  if (!browser) return;
-  const source = (key: keyof CliOptions) => program.getOptionValueSource?.(key as string);
-
-  const configuredChatgptUrl = browser.chatgptUrl ?? browser.url;
-  const cliChatgptSet = options.chatgptUrl !== undefined || options.browserUrl !== undefined;
-  if ((source('chatgptUrl') === 'default' || source('chatgptUrl') === undefined) && !cliChatgptSet && configuredChatgptUrl !== undefined) {
-    try {
-      options.chatgptUrl = normalizeChatgptUrl(configuredChatgptUrl ?? '', CHATGPT_URL);
-    } catch (error) {
-      throw error instanceof Error ? error : new Error(String(error));
-    }
-  }
-  if (source('browserChromeProfile') === 'default' && browser.chromeProfile !== undefined) {
-    options.browserChromeProfile = browser.chromeProfile ?? undefined;
-  }
-  if (source('browserChromePath') === 'default' && browser.chromePath !== undefined) {
-    options.browserChromePath = browser.chromePath ?? undefined;
-  }
-  if (source('browserCookiePath') === 'default' && browser.chromeCookiePath !== undefined) {
-    options.browserCookiePath = browser.chromeCookiePath ?? undefined;
-  }
-  if ((source('browserUrl') === 'default' || source('browserUrl') === undefined) && options.browserUrl === undefined && browser.url !== undefined) {
-    options.browserUrl = browser.url;
-  }
-  if (source('browserTimeout') === 'default' && typeof browser.timeoutMs === 'number') {
-    options.browserTimeout = String(browser.timeoutMs);
-  }
-  if (source('browserPort') === 'default' && typeof browser.debugPort === 'number') {
-    options.browserPort = browser.debugPort;
-  }
-  if (source('browserInputTimeout') === 'default' && typeof browser.inputTimeoutMs === 'number') {
-    options.browserInputTimeout = String(browser.inputTimeoutMs);
-  }
-  if (source('browserHeadless') === 'default' && browser.headless !== undefined) {
-    options.browserHeadless = browser.headless;
-  }
-  if (source('browserHideWindow') === 'default' && browser.hideWindow !== undefined) {
-    options.browserHideWindow = browser.hideWindow;
-  }
-  if (source('browserKeepBrowser') === 'default' && browser.keepBrowser !== undefined) {
-    options.browserKeepBrowser = browser.keepBrowser;
-  }
 }
 
 program.action(async function (this: Command) {
