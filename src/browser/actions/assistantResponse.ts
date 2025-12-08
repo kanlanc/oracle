@@ -347,8 +347,9 @@ function buildResponseObserverExpression(timeoutMs: number): string {
           if (!stop) {
             return;
           }
-          const ariaLabel = stop.getAttribute('aria-label') || '';
-          if (ariaLabel.toLowerCase().includes('stop')) {
+          const isStopButton =
+            stop.getAttribute('data-testid') === 'stop-button' || stop.getAttribute('aria-label')?.toLowerCase()?.includes('stop');
+          if (isStopButton) {
             return;
           }
           dispatchClickSequence(stop);
