@@ -21,8 +21,9 @@ export async function uploadAttachmentFile(
       expression: `(() => {
         const selectors = [
           '#composer-plus-btn',
+          'button[data-testid="composer-plus-btn"]',
           '[data-testid*="plus"]',
-          'button[aria-label*="Add files"]',
+          'button[aria-label*="add"]',
           'button[aria-label*="attachment"]',
         ];
         for (const selector of selectors) {

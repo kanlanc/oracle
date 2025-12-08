@@ -10,6 +10,7 @@
 - Browser interruption: if the user/agent sends SIGINT/SIGTERM/SIGQUIT while the assistant response is still pending, Oracle leaves Chrome running, writes runtime hints, and logs how to reattach with `oracle session <slug>` instead of killing the browser mid-run.
 - API runs: requests for `gpt-5.1-pro` automatically downgrade to `gpt-5-pro` with a one-line notice because 5.1 Pro isn’t available via API yet.
 - Browser uploads (ChatGPT UI 2025-12): wait for DOM ready, avoid duplicate uploads, and block Send until the attachment chip/file name is visible so files aren’t sent empty or multiple times.
+- Browser i18n: stop-button detection now uses data-testid instead of English `aria-label`; send/input/+ selectors favor data-testid/structural cues to work across localized UIs.
 
 ## 0.5.3 — 2025-12-06
 
