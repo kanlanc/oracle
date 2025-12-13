@@ -171,15 +171,24 @@ async function loadGeminiCookiesFromChrome(
       : undefined;
 
     // browser-cookie3 (Python) can hang on macOS Keychain prompts; prefer Node extraction when possible.
-    const cookieMap = (await chromeCookies.getCookiesPromised(
+    type PuppeteerCookie = { name: string; value: string; domain?: string; path?: string };
+    const cookies = (await chromeCookies.getCookiesPromised(
       'https://gemini.google.com',
-      'object',
+      'puppeteer',
       profile,
-    )) as Record<string, string>;
+    )) as PuppeteerCookie[];
 
-    const secure1psid = cookieMap['__Secure-1PSID'];
-    const secure1psidts = cookieMap['__Secure-1PSIDTS'];
-    const nid = cookieMap['NID'];
+    const pickCookie = (name: string): string | undefined => {
+      const candidates = cookies.filter((cookie) => cookie.name === name);
+      if (candidates.length === 0) return undefined;
+      const preferredDomain = candidates.find((cookie) => cookie.domain === '.google.com' && (cookie.path ?? '/') === '/');
+      const googleDomain = candidates.find((cookie) => (cookie.domain ?? '').endsWith('google.com'));
+      return (preferredDomain ?? googleDomain ?? candidates[0])?.value;
+    };
+
+    const secure1psid = pickCookie('__Secure-1PSID');
+    const secure1psidts = pickCookie('__Secure-1PSIDTS');
+    const nid = pickCookie('NID');
 
     if (!secure1psid || !secure1psidts) {
       return {};
@@ -254,7 +263,12 @@ export function createGeminiWebExecutor(
     log?.(`[gemini-web] Calling wrapper with ${args.length} args`);
 
     const cookieEnv = await loadGeminiCookiesFromChrome(runOptions.config, log);
-    const result = await spawnPython(args, log, cookieEnv);
+    const geminiCookiePath = path.join(getOracleHomeDir(), 'gemini-webapi');
+    const result = await spawnPython(args, log, {
+      ...cookieEnv,
+      // biome-ignore lint/style/useNamingConvention: env keys intentionally uppercase
+      GEMINI_COOKIE_PATH: geminiCookiePath,
+    });
 
     if (result.exitCode !== 0) {
       const errorMsg = [result.stderr, result.stdout].map((value) => value?.trim()).filter(Boolean).join('\n');
