@@ -3,7 +3,8 @@
 ## 0.7.1 — Unreleased
 
 ### Changed
-- Default model is now `gpt-5.2-pro` (API).
+- API: default model is now `gpt-5.2-pro` (and “Pro” label inference prefers GPT‑5.2 Pro).
+- Tests: updated fixtures/defaults to use `gpt-5.2-pro` instead of `gpt-5.1-pro`.
 
 ## 0.7.0 — 2025-12-14
 
