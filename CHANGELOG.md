@@ -5,7 +5,7 @@
 ### Fixed
 - Browser: stop auto-clicking the “Answer now” gate; wait for the full Pro-thinking response instead of skipping it.
 - Browser: reject `?temporary-chat=true` URLs when targeting Pro models (Pro picker entries are not available in Temporary Chat); error message now calls this out explicitly.
-- Browser: attachment readiness checks no longer match against arbitrary page text; verify attachments are present on the sent user message before waiting for the assistant.
+- Browser: attachment uploads re-trigger the file-input change event until ChatGPT renders the attachment card (avoids hydration races); verify attachments are present on the sent user message before waiting for the assistant.
 - Live tests: make the `gpt-5.2-instant` OpenAI smoke test resilient to transient API stalls/errors.
 
 ## 0.7.1 — 2025-12-17

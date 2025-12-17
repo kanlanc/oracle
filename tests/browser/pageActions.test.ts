@@ -244,14 +244,21 @@ describe('uploadAttachmentFile', () => {
 
 describe('waitForAttachmentCompletion', () => {
   test('resolves when composer ready', async () => {
-    const runtime = {
-      evaluate: vi
-        .fn()
-        .mockResolvedValueOnce({ result: { value: { state: 'disabled', uploading: true, filesAttached: true } } })
-        .mockResolvedValueOnce({ result: { value: { state: 'ready', uploading: false, filesAttached: true } } }),
-    } as unknown as ChromeClient['Runtime'];
-    await expect(waitForAttachmentCompletion(runtime, 500)).resolves.toBeUndefined();
-    expect(runtime.evaluate).toHaveBeenCalledTimes(2);
+    const evaluate = vi.fn();
+    evaluate.mockImplementation(async () => {
+      const call = evaluate.mock.calls.length;
+      if (call <= 1) {
+        return { result: { value: { state: 'disabled', uploading: true, filesAttached: true } } };
+      }
+      return { result: { value: { state: 'ready', uploading: false, filesAttached: true } } };
+    });
+    const runtime = { evaluate } as unknown as ChromeClient['Runtime'];
+    vi.useFakeTimers();
+    const promise = waitForAttachmentCompletion(runtime, 5_000);
+    await vi.advanceTimersByTimeAsync(3_000);
+    await expect(promise).resolves.toBeUndefined();
+    vi.useRealTimers();
+    expect(runtime.evaluate).toHaveBeenCalled();
   });
 
   test('resolves when send button missing but files present', async () => {

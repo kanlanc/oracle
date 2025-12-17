@@ -35,6 +35,52 @@ describe('attachment completion fallbacks', () => {
     useRealTime();
   });
 
+  test('waitForAttachmentCompletion resolves even when uploading is flagged, once input match is stable', async () => {
+    useFakeTime();
+
+    const runtime = {
+      evaluate: vi.fn().mockResolvedValue({
+        result: {
+          value: {
+            state: 'ready',
+            uploading: true,
+            filesAttached: false,
+            attachedNames: [],
+            inputNames: ['oracle-attach-verify.txt'],
+          },
+        },
+      }),
+    } as unknown as ChromeClient['Runtime'];
+
+    const promise = waitForAttachmentCompletion(runtime, 10_000, ['oracle-attach-verify.txt']);
+    await vi.advanceTimersByTimeAsync(5_000);
+    await expect(promise).resolves.toBeUndefined();
+    useRealTime();
+  });
+
+  test('waitForAttachmentCompletion can resolve when send button is missing (input match fallback)', async () => {
+    useFakeTime();
+
+    const runtime = {
+      evaluate: vi.fn().mockResolvedValue({
+        result: {
+          value: {
+            state: 'missing',
+            uploading: false,
+            filesAttached: false,
+            attachedNames: [],
+            inputNames: ['oracle-attach-verify.txt'],
+          },
+        },
+      }),
+    } as unknown as ChromeClient['Runtime'];
+
+    const promise = waitForAttachmentCompletion(runtime, 10_000, ['oracle-attach-verify.txt']);
+    await vi.advanceTimersByTimeAsync(2_000);
+    await expect(promise).resolves.toBeUndefined();
+    useRealTime();
+  });
+
   test('waitForAttachmentCompletion times out when neither UI nor file input matches', async () => {
     useFakeTime();
 
