@@ -335,14 +335,15 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
       logger(`Prompt textarea ready (after model switch, ${promptText.length.toLocaleString()} chars queued)`);
     }
     // Handle thinking time selection if specified
-    if (config.thinkingTime) {
+    const thinkingTime = config.thinkingTime;
+    if (thinkingTime) {
       await raceWithDisconnect(
-        withRetries(() => ensureThinkingTime(Runtime, config.thinkingTime!, logger), {
+        withRetries(() => ensureThinkingTime(Runtime, thinkingTime, logger), {
           retries: 2,
           delayMs: 300,
           onRetry: (attempt, error) => {
             if (options.verbose) {
-              logger(`[retry] Thinking time (${config.thinkingTime}) attempt ${attempt + 1}: ${error instanceof Error ? error.message : error}`);
+              logger(`[retry] Thinking time (${thinkingTime}) attempt ${attempt + 1}: ${error instanceof Error ? error.message : error}`);
             }
           },
         }),
@@ -790,13 +791,14 @@ async function runRemoteBrowserMode(
       logger(`Prompt textarea ready (after model switch, ${promptText.length.toLocaleString()} chars queued)`);
     }
     // Handle thinking time selection if specified
-    if (config.thinkingTime) {
-      await withRetries(() => ensureThinkingTime(Runtime, config.thinkingTime!, logger), {
+    const thinkingTime = config.thinkingTime;
+    if (thinkingTime) {
+      await withRetries(() => ensureThinkingTime(Runtime, thinkingTime, logger), {
         retries: 2,
         delayMs: 300,
         onRetry: (attempt, error) => {
           if (options.verbose) {
-            logger(`[retry] Thinking time (${config.thinkingTime}) attempt ${attempt + 1}: ${error instanceof Error ? error.message : error}`);
+            logger(`[retry] Thinking time (${thinkingTime}) attempt ${attempt + 1}: ${error instanceof Error ? error.message : error}`);
           }
         },
       });
