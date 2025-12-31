@@ -80,6 +80,7 @@
     "markdansi": "0.2.0",
     "openai": "^6.15.0",
     "osc-progress": "^0.2.0",
+    "qs": "^6.14.1",
     "shiki": "^3.20.0",
     "toasted-notifier": "^10.1.0",
     "tokentally": "^0.1.1",

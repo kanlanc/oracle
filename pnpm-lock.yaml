@@ -68,6 +68,9 @@ importers:
       osc-progress:
         specifier: ^0.2.0
         version: 0.2.0
+      qs:
+        specifier: ^6.14.1
+        version: 6.14.1
       shiki:
         specifier: ^3.20.0
         version: 3.20.0
