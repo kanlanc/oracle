@@ -179,7 +179,7 @@ Prefer to keep Chrome entirely on the remote Mac (no DevTools tunneling, no manu
 
    - `--remote-host` points the CLI at the VM.
    - `--remote-token` matches the token printed by `oracle serve` (set `ORACLE_REMOTE_TOKEN` to avoid repeating it).
-   - You can also set defaults in `~/.oracle/config.json` (`remote.host`, `remote.token`) so you don’t need the flags; env vars still override those when present.
+   - You can also set defaults in `~/.oracle/config.json` (`browser.remoteHost`, `browser.remoteToken`) so you don’t need the flags; env vars still override those when present.
    - Cookies are **not** transferred from your laptop. The service requires the host Chrome profile to be signed in; if not, it opens chatgpt.com and exits so you can log in, then restart `oracle serve`.
 
 3. **What happens**

@@ -5,6 +5,8 @@
 ### Added
 - Bridge: add the bridge workflow + MCP browser controls for remote ChatGPT sessions. Original PR #42 by Kyle McCleary (@kmccleary3301) — thank you!
 
+### Changed
+- Config: remove legacy `remote.host`/`remote.token` and top-level `remoteHost`/`remoteToken`; use `browser.remoteHost`/`browser.remoteToken` or env vars.
 ## 0.8.4 — 2026-01-04
 
 ### Changed

@@ -19,6 +19,12 @@ export interface BrowserConfigDefaults {
   chromeCookiePath?: string | null;
   chatgptUrl?: string | null;
   url?: string;
+  /** Delegate browser automation to a remote `oracle serve` instance (host:port). */
+  remoteHost?: string | null;
+  /** Access token clients must provide to the remote `oracle serve` instance. */
+  remoteToken?: string | null;
+  /** Optional metadata for the SSH reverse-tunnel that makes remoteHost reachable. */
+  remoteViaSshReverseTunnel?: RemoteViaSshReverseTunnelConfig | null;
   timeoutMs?: number;
   debugPort?: number | null;
   inputTimeoutMs?: number;
@@ -33,12 +39,6 @@ export interface BrowserConfigDefaults {
   manualLogin?: boolean;
   /** Manual-login profile directory override (also available via ORACLE_BROWSER_PROFILE_DIR). */
   manualLoginProfileDir?: string | null;
-  /** Delegate browser automation to a remote `oracle serve` instance (host:port). */
-  remoteHost?: string | null;
-  /** Access token clients must provide to the remote `oracle serve` instance. */
-  remoteToken?: string | null;
-  /** Optional metadata for the SSH reverse-tunnel that makes remoteHost reachable. */
-  remoteViaSshReverseTunnel?: RemoteViaSshReverseTunnelConfig | null;
 }
 
 export interface AzureConfig {
@@ -55,11 +55,6 @@ export interface RemoteViaSshReverseTunnelConfig {
   extraArgs?: string;
 }
 
-export interface RemoteServiceConfig {
-  host?: string;
-  token?: string;
-}
-
 export interface UserConfig {
   engine?: EnginePreference;
   model?: string;
@@ -73,9 +68,6 @@ export interface UserConfig {
   apiBaseUrl?: string;
   azure?: AzureConfig;
   sessionRetentionHours?: number;
-  remote?: RemoteServiceConfig;
-  remoteHost?: string;
-  remoteToken?: string;
 }
 
 function resolveConfigPath(): string {
