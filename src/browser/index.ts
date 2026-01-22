@@ -771,7 +771,10 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
     } catch {
       // ignore
     }
-    if (!effectiveKeepBrowser && isolatedTargetId && chrome?.port) {
+    // Close the isolated tab once the response has been fully captured to prevent
+    // tab accumulation across repeated runs. Keep the tab open on incomplete runs
+    // so reattach can recover the response.
+    if (runStatus === 'complete' && isolatedTargetId && chrome?.port) {
       await closeTab(chrome.port, isolatedTargetId, logger, chromeHost).catch(() => undefined);
     }
     removeDialogHandler?.();
