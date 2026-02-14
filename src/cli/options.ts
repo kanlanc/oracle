@@ -214,6 +214,12 @@ export function resolveApiModel(modelValue: string): ModelName {
     }
     return 'gpt-5.1-codex';
   }
+  if (normalized.includes('gemini') && normalized.includes('deep')) {
+    return 'gemini-3-pro-deep-think' as ModelName;
+  }
+  if (normalized.includes('deep-think') || normalized.includes('deep_think') || normalized.includes('deepthink')) {
+    return 'gemini-3-pro-deep-think' as ModelName;
+  }
   if (normalized.includes('gemini')) {
     return 'gemini-3-pro';
   }
@@ -243,6 +249,12 @@ export function inferModelFromLabel(modelValue: string): ModelName {
   }
   if (normalized.includes('codex')) {
     return 'gpt-5.1-codex';
+  }
+  if (normalized.includes('gemini') && normalized.includes('deep')) {
+    return 'gemini-3-pro-deep-think' as ModelName;
+  }
+  if (normalized.includes('deep-think') || normalized.includes('deep_think') || normalized.includes('deepthink')) {
+    return 'gemini-3-pro-deep-think' as ModelName;
   }
   if (normalized.includes('gemini')) {
     return 'gemini-3-pro';

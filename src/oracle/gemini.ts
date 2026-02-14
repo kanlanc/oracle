@@ -4,6 +4,7 @@ import type { ClientLike, ModelName, OracleRequestBody, OracleResponse, Response
 
 const MODEL_ID_MAP: Record<ModelName, string> = {
   'gemini-3-pro': 'gemini-3-pro-preview',
+  'gemini-3-pro-deep-think': 'gemini-3-pro-preview',
   'gpt-5.1-pro': 'gpt-5.1-pro',
   'gpt-5-pro': 'gpt-5-pro',
   'gpt-5.1': 'gpt-5.1',

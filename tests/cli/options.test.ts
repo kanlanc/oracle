@@ -170,6 +170,8 @@ describe('resolveApiModel', () => {
     expect(resolveApiModel('opus')).toBe('claude-4.1-opus');
     expect(resolveApiModel('CLAUDE')).toBe('claude-4.5-sonnet');
     expect(resolveApiModel('Gemini')).toBe('gemini-3-pro');
+    expect(resolveApiModel('gemini-3-deep-think')).toBe('gemini-3-pro-deep-think');
+    expect(resolveApiModel('Gemini Deep Think')).toBe('gemini-3-pro-deep-think');
     expect(resolveApiModel('grok')).toBe('grok-4.1');
     expect(resolveApiModel('Grok 4.1')).toBe('grok-4.1');
   });
@@ -223,6 +225,11 @@ describe('inferModelFromLabel', () => {
     expect(inferModelFromLabel('grok')).toBe('grok-4.1');
     expect(inferModelFromLabel('Grok 4.1')).toBe('grok-4.1');
     expect(inferModelFromLabel('Grok-4-1')).toBe('grok-4.1');
+  });
+
+  test('infers Gemini deep-think aliases', () => {
+    expect(inferModelFromLabel('gemini-3-deep-think')).toBe('gemini-3-pro-deep-think');
+    expect(inferModelFromLabel('Gemini Deep Think')).toBe('gemini-3-pro-deep-think');
   });
 
   test('falls back to gpt-5.2-pro when label empty and to gpt-5.2 for other ambiguous strings', () => {
